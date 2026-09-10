@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Live Classroom Q&amp;A</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <main class="entry-wrap">
+    <header class="entry-header">
+      <span class="entry-eyebrow">Live Classroom Q&amp;A</span>
+      <h1 class="entry-title">Make Every Answer<br />Seen Instantly</h1>
+      <p class="entry-subtitle">Teachers post questions, students respond simultaneously, and every answer appears in real time — for a highly interactive classroom experience.</p>
+    </header>
+
+    <section class="role-cards">
+      <!-- Teacher card -->
+      <div class="role-card teacher" id="teacherCard">
+        <div class="role-icon">&#127891;</div>
+        <h2 class="role-title">I'm a Teacher</h2>
+        <p class="role-desc">Create a classroom, post questions, and receive student answers in real time.</p>
+        <button class="btn btn-teal" id="createRoomBtn">Create Classroom</button>
+      </div>
+
+      <!-- Student card -->
+      <div class="role-card student">
+        <div class="role-icon">&#9997;</div>
+        <h2 class="role-title">I'm a Student</h2>
+        <p class="role-desc">Enter a classroom code to join and answer your teacher's questions in real time.</p>
+        <div class="join-form">
+          <div class="input-row">
+            <input
+              type="text"
+              class="input-field room-code-input"
+              id="roomCodeInput"
+              placeholder="Classroom Code"
+              maxlength="6"
+              autocomplete="off"
+            />
+          </div>
+          <div class="input-row">
+            <input
+              type="text"
+              class="input-field"
+              id="studentNameInput"
+              placeholder="Your name (optional)"
+              maxlength="20"
+              autocomplete="off"
+            />
+          </div>
+          <button class="btn btn-primary" id="joinRoomBtn">Join Classroom</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="/js/app.js"></script>
+  <script>LiveQA.initEntry();</script>
+</body>
+</html>
