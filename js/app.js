@@ -314,14 +314,14 @@ const LiveQA = (function () {
 
     // Generate QR code for students to scan and join
     const qrCanvas = document.getElementById('qrCanvas');
-    if (qrCanvas && window.QRCode) {
+    if (qrCanvas && typeof QRCode !== 'undefined') {
       const studentUrl = window.location.origin + window.location.pathname.replace('teacher.html', 'index.html') + '?room=' + room;
-      QRCode.toCanvas(qrCanvas, studentUrl, {
+      new QRCode(qrCanvas, {
+        text: studentUrl,
         width: 180,
-        margin: 2,
-        color: { dark: '#1a1a2e', light: '#ffffff' },
-      }, (err) => {
-        if (err) console.error('QR code error:', err);
+        height: 180,
+        colorDark: '#1a1a2e',
+        colorLight: '#ffffff',
       });
     }
 

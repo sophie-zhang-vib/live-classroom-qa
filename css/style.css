@@ -521,10 +521,18 @@ h1, h2, h3, h4 {
   color: var(--muted);
 }
 
-.qr-section canvas {
+.qr-section #qrCanvas {
+  display: inline-block;
+  padding: 10px;
+  background: #ffffff;
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
-  background: #ffffff;
+}
+
+.qr-section #qrCanvas img {
+  display: block;
+  width: 180px;
+  height: 180px;
 }
 
 .qr-hint {

@@ -40,20 +40,28 @@ function getRoomFromQuery(queryString) {
 }
 
 /**
- * Simulate the QR code generation flow: check canvas + QRCode lib exist,
- * then call QRCode.toCanvas with the correct URL.
+ * Simulate the QR code generation flow: check container + QRCode lib exist,
+ * then instantiate QRCode with the correct URL.
  *
- * @param {HTMLElement} canvas  - canvas element
- * @param {object} qrLib        - QRCode library (must have toCanvas)
+ * Uses qrcodejs API: new QRCode(element, { text, width, height, ... })
+ *
+ * @param {HTMLElement} container  - target element
+ * @param {object} qrLib        - QRCode constructor (qrcodejs)
  * @param {string} origin       - window.location.origin
  * @param {string} teacherPath  - window.location.pathname
  * @param {string} room        - room code
  * @returns {string|null} the URL that was encoded, or null if skipped
  */
-function generateQrCode(canvas, qrLib, origin, teacherPath, room) {
-  if (!canvas || !qrLib) return null;
+function generateQrCode(container, qrLib, origin, teacherPath, room) {
+  if (!container || !qrLib) return null;
   var url = buildStudentJoinUrl(origin, teacherPath, room);
-  qrLib.toCanvas(canvas, url, { width: 180, margin: 2 }, function () {});
+  new qrLib(container, {
+    text: url,
+    width: 180,
+    height: 180,
+    colorDark: '#1a1a2e',
+    colorLight: '#ffffff',
+  });
   return url;
 }
 

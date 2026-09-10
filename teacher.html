@@ -6,7 +6,7 @@
   <title>Teacher Dashboard · Live QA</title>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="js/qrcode.min.js"></script>
   <script src="js/supabase-config.js"></script>
 </head>
 <body>
@@ -81,7 +81,7 @@
           <button class="btn btn-teal export-btn" id="exportBtn">Export Q&A (CSV)</button>
           <div class="qr-section">
             <div class="qr-label">Scan to Join</div>
-            <canvas id="qrCanvas"></canvas>
+            <div id="qrCanvas"></div>
             <div class="qr-hint">Students scan with phone camera</div>
           </div>
         </aside>

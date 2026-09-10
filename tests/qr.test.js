@@ -111,70 +111,68 @@ describe('QR Code Feature — Unit Tests', () => {
   // 4. generateQrCode (DOM interaction)
   // ---------------------------------------------------------------
   describe('generateQrCode', () => {
-    let canvas, qrLib;
+    let container, qrLib;
 
     beforeEach(() => {
-      canvas = document.createElement('canvas');
-      canvas.id = 'qrCanvas';
-      document.body.appendChild(canvas);
+      container = document.createElement('div');
+      container.id = 'qrCanvas';
+      document.body.appendChild(container);
 
-      qrLib = {
-        toCanvas: jest.fn(),
-      };
+      qrLib = jest.fn();
     });
 
     afterEach(() => {
       document.body.innerHTML = '';
     });
 
-    test('calls QRCode.toCanvas with the canvas element', () => {
-      generateQrCode(canvas, qrLib, 'https://example.com', '/teacher.html', '123456');
-      expect(qrLib.toCanvas).toHaveBeenCalledWith(
-        canvas,
-        expect.any(String),
-        expect.objectContaining({ width: 180, margin: 2 }),
-        expect.any(Function)
+    test('instantiates QRCode with the container element', () => {
+      generateQrCode(container, qrLib, 'https://example.com', '/teacher.html', '123456');
+      expect(qrLib).toHaveBeenCalledWith(
+        container,
+        expect.objectContaining({ text: expect.any(String), width: 180, height: 180 })
       );
     });
 
     test('encodes the correct student join URL', () => {
       let encodedUrl = null;
-      qrLib.toCanvas.mockImplementation((_c, url, _opts, _cb) => {
-        encodedUrl = url;
+      qrLib.mockImplementation((_el, opts) => {
+        encodedUrl = opts.text;
       });
 
-      generateQrCode(canvas, qrLib, 'https://example.com', '/teacher.html', '777888');
+      generateQrCode(container, qrLib, 'https://example.com', '/teacher.html', '777888');
       expect(encodedUrl).toBe('https://example.com/index.html?room=777888');
     });
 
     test('returns the encoded URL string', () => {
       const result = generateQrCode(
-        canvas, qrLib, 'https://test.com', '/teacher.html', '111222'
+        container, qrLib, 'https://test.com', '/teacher.html', '111222'
       );
       expect(result).toBe('https://test.com/index.html?room=111222');
     });
 
-    test('returns null when canvas is missing', () => {
+    test('returns null when container is missing', () => {
       const result = generateQrCode(null, qrLib, 'https://test.com', '/teacher.html', '111222');
       expect(result).toBeNull();
-      expect(qrLib.toCanvas).not.toHaveBeenCalled();
+      expect(qrLib).not.toHaveBeenCalled();
     });
 
     test('returns null when QR library is missing', () => {
-      const result = generateQrCode(canvas, null, 'https://test.com', '/teacher.html', '111222');
+      const result = generateQrCode(container, null, 'https://test.com', '/teacher.html', '111222');
       expect(result).toBeNull();
     });
 
-    test('passes width=180 in options', () => {
-      generateQrCode(canvas, qrLib, 'https://test.com', '/teacher.html', '333444');
-      const callArgs = qrLib.toCanvas.mock.calls[0];
-      expect(callArgs[2].width).toBe(180);
+    test('passes width=180 and height=180 in options', () => {
+      generateQrCode(container, qrLib, 'https://test.com', '/teacher.html', '333444');
+      const callArgs = qrLib.mock.calls[0];
+      expect(callArgs[1].width).toBe(180);
+      expect(callArgs[1].height).toBe(180);
     });
 
-    test('passes margin=2 in options', () => {
-      generateQrCode(canvas, qrLib, 'https://test.com', '/teacher.html', '333444');
-      const callArgs = qrLib.toCanvas.mock.calls[0];
-      expect(callArgs[2].margin).toBe(2);
+    test('passes colorDark and colorLight in options', () => {
+      generateQrCode(container, qrLib, 'https://test.com', '/teacher.html', '333444');
+      const callArgs = qrLib.mock.calls[0];
+      expect(callArgs[1].colorDark).toBe('#1a1a2e');
+      expect(callArgs[1].colorLight).toBe('#ffffff');
     });
   });
 
@@ -201,15 +199,13 @@ describe('QR Code Feature — Unit Tests', () => {
       );
 
       // Step 4: generate QR
-      const canvas = document.createElement('canvas');
-      const qrLib = { toCanvas: jest.fn() };
-      const result = generateQrCode(canvas, qrLib, origin, teacherPath, room);
+      const container = document.createElement('div');
+      const qrLib = jest.fn();
+      const result = generateQrCode(container, qrLib, origin, teacherPath, room);
       expect(result).toBe(url);
-      expect(qrLib.toCanvas).toHaveBeenCalledWith(
-        canvas,
-        url,
-        expect.objectContaining({ width: 180 }),
-        expect.any(Function)
+      expect(qrLib).toHaveBeenCalledWith(
+        container,
+        expect.objectContaining({ text: url, width: 180, height: 180 })
       );
     });
 
