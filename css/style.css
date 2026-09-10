@@ -524,6 +524,7 @@ h1, h2, h3, h4 {
 .qr-section canvas {
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
+  background: #ffffff;
 }
 
 .qr-hint {

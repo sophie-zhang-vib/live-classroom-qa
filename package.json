@@ -4,10 +4,15 @@
   "description": "实时课堂问答系统 - 教师发布问题，学生同时作答，回答即时展示",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "jest"
   },
   "dependencies": {
     "express": "^4.19.2",
     "ws": "^8.17.0"
+  },
+  "devDependencies": {
+    "jest": "^30.5.1",
+    "jest-environment-jsdom": "^30.5.1"
   }
 }
