@@ -33,7 +33,7 @@ const LiveQA = (function () {
     if (supabaseClient) return supabaseClient;
     if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY ||
         window.SUPABASE_URL.includes('YOUR-PROJECT-REF')) {
-      throw new Error('Supabase credentials not configured. Edit public/js/supabase-config.js');
+      throw new Error('Supabase credentials not configured. Edit js/supabase-config.js');
     }
     supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
     return supabaseClient;
