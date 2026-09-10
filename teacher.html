@@ -6,6 +6,7 @@
   <title>Teacher Dashboard · Live QA</title>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="js/supabase-config.js"></script>
 </head>
 <body>
@@ -36,12 +37,6 @@
               placeholder="Type your question here, e.g. What is the capital of France?"
               rows="3"
             ></textarea>
-            <input
-              class="answer-input"
-              id="correctAnswerInput"
-              type="text"
-              placeholder="Reference answer (optional, revealed to students later) — e.g. Paris"
-            />
             <div class="composer-actions">
               <span style="color:var(--muted); font-size:0.9rem;">Students can answer all questions using the same room code</span>
               <div style="display:flex; gap:10px;">
@@ -84,6 +79,11 @@
             <span class="stat-value" id="statRoomCode">------</span>
           </div>
           <button class="btn btn-teal export-btn" id="exportBtn">Export Q&A (CSV)</button>
+          <div class="qr-section">
+            <div class="qr-label">Scan to Join</div>
+            <canvas id="qrCanvas"></canvas>
+            <div class="qr-hint">Students scan with phone camera</div>
+          </div>
         </aside>
       </div>
     </main>
