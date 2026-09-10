@@ -180,6 +180,7 @@ const LiveQA = (function () {
     const questionInput = document.getElementById('questionInput');
     const correctAnswerInput = document.getElementById('correctAnswerInput');
     const postBtn = document.getElementById('postQuestionBtn');
+    const exportBtn = document.getElementById('exportBtn');
     const questionsList = document.getElementById('questionsList');
     const emptyState = document.getElementById('emptyState');
     const questionCountEl = document.getElementById('questionCount');
@@ -403,6 +404,66 @@ const LiveQA = (function () {
           console.error(err);
           toast('Failed to update answer visibility', 'error');
         }
+      }
+    });
+
+    // Export all questions + answers as a CSV file
+    exportBtn.addEventListener('click', async () => {
+      try {
+        const { data: questions } = await sb.from('questions')
+          .select('*')
+          .eq('room_id', room)
+          .order('created_at', { ascending: true });
+
+        const { data: answers } = await sb.from('answers')
+          .select('*')
+          .eq('room_id', room)
+          .order('created_at', { ascending: true });
+
+        if (!questions || questions.length === 0) {
+          toast('No questions to export', 'error');
+          return;
+        }
+
+        const rows = [['Question', 'Reference Answer', 'Student', 'Answer', 'Time']];
+        questions.forEach((q) => {
+          const qAnswers = (answers || []).filter((a) => a.question_id === q.id);
+          if (qAnswers.length === 0) {
+            rows.push([q.question_text, q.correct_answer || '', '', '', '']);
+          } else {
+            qAnswers.forEach((a) => {
+              rows.push([
+                q.question_text,
+                q.correct_answer || '',
+                a.student_name || 'Anonymous',
+                a.answer,
+                formatTime(a.created_at),
+              ]);
+            });
+          }
+        });
+
+        const csv = rows
+          .map((r) => r.map((cell) => {
+            const s = String(cell ?? '');
+            return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+          }).join(','))
+          .join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const ts = new Date().toISOString().slice(0, 10);
+        a.href = url;
+        a.download = 'live-qa-' + room + '-' + ts + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('Exported ' + (rows.length - 1) + ' row(s)', 'success');
+      } catch (err) {
+        console.error(err);
+        toast('Failed to export data', 'error');
       }
     });
   }
