@@ -15,6 +15,8 @@ create table if not exists public.questions (
   id uuid primary key default gen_random_uuid(),
   room_id text not null references public.rooms(room_id) on delete cascade,
   question_text text not null,
+  correct_answer text,
+  show_answer boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -52,15 +54,23 @@ create policy "rooms_insert" on public.rooms
 create policy "rooms_update" on public.rooms
   for update using (true) with check (true);
 
--- Questions: allow anyone to read and create
+-- Questions: allow anyone to read, create, update (toggle show_answer), and delete
 drop policy if exists "questions_select" on public.questions;
 drop policy if exists "questions_insert" on public.questions;
+drop policy if exists "questions_update" on public.questions;
+drop policy if exists "questions_delete" on public.questions;
 
 create policy "questions_select" on public.questions
   for select using (true);
 
 create policy "questions_insert" on public.questions
   for insert with check (true);
+
+create policy "questions_update" on public.questions
+  for update using (true) with check (true);
+
+create policy "questions_delete" on public.questions
+  for delete using (true);
 
 -- Answers: allow anyone to read, submit, and delete
 drop policy if exists "answers_select" on public.answers;

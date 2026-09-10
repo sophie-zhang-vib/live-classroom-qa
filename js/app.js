@@ -69,7 +69,7 @@ const LiveQA = (function () {
   }
 
   // ---------- Shared: create a question card ----------
-  // isStudent: if true, includes answer input bar
+  // isStudent: if true, includes answer input bar; else shows teacher action buttons
   function makeQuestionCard(q, index, isStudent) {
     const card = document.createElement('div');
     card.className = 'question-card';
@@ -78,12 +78,40 @@ const LiveQA = (function () {
     const answersWallClass = isStudent ? 'student-answers-wall' : 'answers-wall';
     const answersTitle = isStudent ? "Classmates' Answers" : 'Answers';
 
+    // Reference answer block (shown when teacher reveals it)
+    const showAnswer = !!q.show_answer;
+    const hasRefAnswer = q.correct_answer && q.correct_answer.trim() !== '';
+    let refAnswerHtml = '';
+    if (showAnswer && hasRefAnswer) {
+      refAnswerHtml =
+        '<div class="reference-answer">' +
+          '<span class="ref-label">Reference Answer</span>' +
+          '<span class="ref-text">' + escapeHtml(q.correct_answer) + '</span>' +
+        '</div>';
+    }
+
+    // Teacher action buttons (Show/Hide Answer + Delete)
+    let actionsHtml = '';
+    if (!isStudent) {
+      const toggleLabel = showAnswer ? 'Hide Answer' : 'Show Answer';
+      const toggleClass = showAnswer ? 'btn-ghost' : 'btn-outline';
+      actionsHtml =
+        '<div class="question-actions">' +
+          (hasRefAnswer
+            ? '<button class="btn ' + toggleClass + ' btn-sm toggle-answer-btn">' + toggleLabel + '</button>'
+            : '') +
+          '<button class="btn btn-ghost btn-sm btn-danger delete-question-btn">Delete</button>' +
+        '</div>';
+    }
+
     card.innerHTML =
       '<div class="question-card-header">' +
         '<span class="question-number">Q' + index + '</span>' +
         '<span class="question-time">' + formatTime(q.created_at) + '</span>' +
+        actionsHtml +
       '</div>' +
       '<div class="question-card-text">' + escapeHtml(q.question_text) + '</div>' +
+      refAnswerHtml +
       (isStudent ?
         '<div class="answer-input-bar">' +
           '<input type="text" class="input-field answer-input" placeholder="Type your answer…" maxlength="500" autocomplete="off" />' +
@@ -150,6 +178,7 @@ const LiveQA = (function () {
     const sb = getSupabase();
 
     const questionInput = document.getElementById('questionInput');
+    const correctAnswerInput = document.getElementById('correctAnswerInput');
     const postBtn = document.getElementById('postQuestionBtn');
     const questionsList = document.getElementById('questionsList');
     const emptyState = document.getElementById('emptyState');
@@ -200,6 +229,32 @@ const LiveQA = (function () {
       updateQuestionCount();
     }
 
+    function removeQuestionCard(questionId) {
+      const card = questionsList.querySelector('.question-card[data-question-id="' + questionId + '"]');
+      if (card) card.remove();
+      if (questionsList.querySelectorAll('.question-card').length === 0) {
+        questionsList.appendChild(emptyState);
+      }
+      updateQuestionCount();
+      updateTotalAnswers();
+    }
+
+    // Update a card in place when its question row changes (show_answer toggle)
+    function updateQuestionCard(q) {
+      const card = questionsList.querySelector('.question-card[data-question-id="' + q.id + '"]');
+      if (!card) return;
+      // Preserve the answer wall content, then re-render the card skeleton
+      const savedWall = card.querySelector('.answers-wall-inner').innerHTML;
+      const savedCount = card.querySelector('.answer-count').textContent;
+      // Use the existing Q number from the card
+      const qNum = card.querySelector('.question-number').textContent.replace('Q', '');
+      const fresh = makeQuestionCard(q, parseInt(qNum, 10) || 1, false);
+      card.replaceWith(fresh);
+      const newWall = fresh.querySelector('.answers-wall-inner');
+      newWall.innerHTML = savedWall;
+      fresh.querySelector('.answer-count').textContent = savedCount;
+    }
+
     // Load existing questions + answers
     async function loadQuestions() {
       const { data: questions } = await sb.from('questions')
@@ -231,7 +286,7 @@ const LiveQA = (function () {
       }
     }
 
-    // Subscribe to new questions
+    // Subscribe to question changes (INSERT / UPDATE / DELETE)
     sb.channel('questions:' + room)
       .on('postgres_changes', {
         event: 'INSERT',
@@ -241,6 +296,22 @@ const LiveQA = (function () {
       }, (payload) => {
         addQuestionCard(payload.new);
         toast('Question posted', 'success');
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'questions',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        updateQuestionCard(payload.new);
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'questions',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        removeQuestionCard(payload.old.id);
       })
       .subscribe();
 
@@ -283,8 +354,14 @@ const LiveQA = (function () {
         return;
       }
       try {
-        await sb.from('questions').insert({ room_id: room, question_text: q });
+        const ref = correctAnswerInput.value.trim();
+        await sb.from('questions').insert({
+          room_id: room,
+          question_text: q,
+          correct_answer: ref || null,
+        });
         questionInput.value = '';
+        correctAnswerInput.value = '';
       } catch (err) {
         console.error(err);
         toast('Failed to post question', 'error');
@@ -293,6 +370,40 @@ const LiveQA = (function () {
 
     questionInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) postBtn.click();
+    });
+
+    // Event delegation: Delete question + Toggle show_answer
+    questionsList.addEventListener('click', async (e) => {
+      const deleteBtn = e.target.closest('.delete-question-btn');
+      const toggleBtn = e.target.closest('.toggle-answer-btn');
+      if (!deleteBtn && !toggleBtn) return;
+
+      const card = e.target.closest('.question-card');
+      if (!card) return;
+      const qid = card.dataset.questionId;
+
+      if (deleteBtn) {
+        if (!confirm('Delete this question and all its answers?')) return;
+        try {
+          await sb.from('questions').delete().eq('id', qid);
+          toast('Question deleted', 'success');
+        } catch (err) {
+          console.error(err);
+          toast('Failed to delete question', 'error');
+        }
+      }
+
+      if (toggleBtn) {
+        const currentlyShown = toggleBtn.textContent === 'Hide Answer';
+        try {
+          await sb.from('questions')
+            .update({ show_answer: !currentlyShown })
+            .eq('id', qid);
+        } catch (err) {
+          console.error(err);
+          toast('Failed to update answer visibility', 'error');
+        }
+      }
     });
   }
 
@@ -371,6 +482,53 @@ const LiveQA = (function () {
       updateQuestionCount();
     }
 
+    function removeQuestionCard(questionId) {
+      const card = questionsList.querySelector('.question-card[data-question-id="' + questionId + '"]');
+      if (card) card.remove();
+      if (questionsList.querySelectorAll('.question-card').length === 0) {
+        questionsList.appendChild(emptyState);
+      }
+      updateQuestionCount();
+    }
+
+    // Re-render a card when show_answer toggles, preserving answer input + wall
+    function updateQuestionCard(q) {
+      const card = questionsList.querySelector('.question-card[data-question-id="' + q.id + '"]');
+      if (!card) return;
+      const savedInputVal = card.querySelector('.answer-input')?.value || '';
+      const savedWall = card.querySelector('.answers-wall-inner').innerHTML;
+      const savedCount = card.querySelector('.answer-count').textContent;
+      const qNum = card.querySelector('.question-number').textContent.replace('Q', '');
+
+      const fresh = makeQuestionCard(q, parseInt(qNum, 10) || 1, true);
+      card.replaceWith(fresh);
+      const newInput = fresh.querySelector('.answer-input');
+      if (newInput) newInput.value = savedInputVal;
+      fresh.querySelector('.answers-wall-inner').innerHTML = savedWall;
+      fresh.querySelector('.answer-count').textContent = savedCount;
+
+      // Re-wire submit handlers for the new card
+      const input = fresh.querySelector('.answer-input');
+      const btn = fresh.querySelector('.submit-answer-btn');
+      const qid = fresh.dataset.questionId;
+      async function submitAnswer() {
+        const text = input.value.trim();
+        if (!text) { toast('Please enter an answer', 'error'); return; }
+        try {
+          await sb.from('answers').insert({
+            room_id: room, question_id: qid, answer: text, student_name: name,
+          });
+          input.value = '';
+          toast('Answer submitted', 'success');
+        } catch (err) {
+          console.error(err);
+          toast('Failed to submit answer', 'error');
+        }
+      }
+      btn.addEventListener('click', submitAnswer);
+      input.addEventListener('keypress', (e) => { if (e.key === 'Enter') submitAnswer(); });
+    }
+
     // Load existing questions + answers
     async function loadQuestions() {
       const { data: questions, error: qErr } = await sb.from('questions')
@@ -403,7 +561,7 @@ const LiveQA = (function () {
       }
     }
 
-    // Subscribe to new questions
+    // Subscribe to question changes (INSERT / UPDATE / DELETE)
     sb.channel('questions:' + room)
       .on('postgres_changes', {
         event: 'INSERT',
@@ -413,6 +571,22 @@ const LiveQA = (function () {
       }, (payload) => {
         addQuestionCard(payload.new);
         toast('New question received!', 'success');
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'questions',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        updateQuestionCard(payload.new);
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'questions',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        removeQuestionCard(payload.old.id);
       })
       .subscribe();
 
