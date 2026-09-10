@@ -25,14 +25,8 @@
 
     <main class="app-main">
       <div class="teacher-grid">
-        <!-- Left: question composer + answer wall -->
+        <!-- Left: composer + question list -->
         <div>
-          <!-- Active question bar -->
-          <div id="activeQuestionBar" class="active-question-bar" style="display:none;">
-            <div class="label">Current Question</div>
-            <div class="text" id="activeQuestionText"></div>
-          </div>
-
           <!-- Question composer -->
           <div class="question-composer">
             <div class="composer-label">Post a New Question</div>
@@ -43,24 +37,23 @@
               rows="3"
             ></textarea>
             <div class="composer-actions">
-              <span style="color:var(--muted); font-size:0.9rem;">Once posted, it will be pushed to all online students</span>
+              <span style="color:var(--muted); font-size:0.9rem;">Students can answer all questions using the same room code</span>
               <div style="display:flex; gap:10px;">
-                <button class="btn btn-ghost" id="endQuestionBtn" style="display:none;">End Question</button>
                 <button class="btn btn-primary" id="postQuestionBtn">Post Question</button>
               </div>
             </div>
           </div>
 
-          <!-- Answer wall -->
-          <section class="answers-section">
+          <!-- Questions list -->
+          <section class="questions-section">
             <h3 class="section-title">
-              Student Answers
-              <span class="count" id="answerCount">0</span>
+              All Questions
+              <span class="count" id="questionCount">0</span>
             </h3>
-            <div class="answers-wall" id="answersWall">
+            <div class="questions-list" id="questionsList">
               <div class="empty-state" id="emptyState">
-                <div class="icon">&#128172;</div>
-                <div class="msg">No answers yet. Student answers will appear here after you post a question.</div>
+                <div class="icon">&#128221;</div>
+                <div class="msg">No questions yet. Post your first question above to get started.</div>
               </div>
             </div>
           </section>
@@ -73,12 +66,16 @@
             <span class="stat-value teal" id="statStudents">0</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Answered</span>
-            <span class="stat-value coral" id="statAnswered">0</span>
+            <span class="stat-label">Questions</span>
+            <span class="stat-value amber" id="statQuestions">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Total Answers</span>
+            <span class="stat-value coral" id="statAnswers">0</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Room Code</span>
-            <span class="stat-value amber" id="statRoomCode">------</span>
+            <span class="stat-value" id="statRoomCode">------</span>
           </div>
         </aside>
       </div>

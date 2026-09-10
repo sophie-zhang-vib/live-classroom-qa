@@ -1,6 +1,6 @@
 /* ============================================
    Live Classroom Q&A — Frontend Logic
-   Powered by Supabase Realtime
+   Powered by Supabase Realtime (Multi-Question)
    ============================================ */
 const LiveQA = (function () {
   'use strict';
@@ -43,23 +43,58 @@ const LiveQA = (function () {
     return (name || 'A').trim().charAt(0).toUpperCase() || 'A';
   }
 
-  function makeAnswerCard(a) {
-    const card = document.createElement('div');
-    card.className = 'answer-card';
-    card.style.animationDelay = (Math.random() * 0.12).toFixed(3) + 's';
-    card.innerHTML =
-      '<div class="student"><span class="avatar">' + escapeHtml(initialOf(a.studentName)) +
-      '</span>' + escapeHtml(a.studentName || 'Anonymous') + '</div>' +
-      '<div class="text">' + escapeHtml(a.answer) + '</div>';
-    return card;
-  }
-
   function generateRoomId() {
     let id = '';
     for (let i = 0; i < 6; i++) {
       id += Math.floor(Math.random() * 10).toString();
     }
     return id;
+  }
+
+  function formatTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function makeAnswerCard(a) {
+    const card = document.createElement('div');
+    card.className = 'answer-card';
+    card.style.animationDelay = (Math.random() * 0.12).toFixed(3) + 's';
+    card.innerHTML =
+      '<div class="student"><span class="avatar">' + escapeHtml(initialOf(a.student_name || a.studentName)) +
+      '</span>' + escapeHtml(a.student_name || a.studentName || 'Anonymous') + '</div>' +
+      '<div class="text">' + escapeHtml(a.answer) + '</div>';
+    return card;
+  }
+
+  // ---------- Shared: create a question card ----------
+  // isStudent: if true, includes answer input bar
+  function makeQuestionCard(q, index, isStudent) {
+    const card = document.createElement('div');
+    card.className = 'question-card';
+    card.dataset.questionId = q.id;
+
+    const answersWallClass = isStudent ? 'student-answers-wall' : 'answers-wall';
+    const answersTitle = isStudent ? "Classmates' Answers" : 'Answers';
+
+    card.innerHTML =
+      '<div class="question-card-header">' +
+        '<span class="question-number">Q' + index + '</span>' +
+        '<span class="question-time">' + formatTime(q.created_at) + '</span>' +
+      '</div>' +
+      '<div class="question-card-text">' + escapeHtml(q.question_text) + '</div>' +
+      (isStudent ?
+        '<div class="answer-input-bar">' +
+          '<input type="text" class="input-field answer-input" placeholder="Type your answer…" maxlength="500" autocomplete="off" />' +
+          '<button class="btn btn-primary submit-answer-btn">Submit</button>' +
+        '</div>' : '') +
+      '<div class="answers-section">' +
+        '<h4 class="section-title small">' + answersTitle + ' <span class="count answer-count">0</span></h4>' +
+        '<div class="' + answersWallClass + ' answers-wall-inner"></div>' +
+      '</div>';
+
+    return card;
   }
 
   // ---------- Entry Page ----------
@@ -72,13 +107,12 @@ const LiveQA = (function () {
     createBtn.addEventListener('click', async () => {
       try {
         const sb = getSupabase();
-        // Try up to 5 times to find a unique room ID
         let roomId;
         for (let attempt = 0; attempt < 5; attempt++) {
           roomId = generateRoomId();
           const { error } = await sb.from('rooms').insert({ room_id: roomId });
           if (!error) break;
-          if (error.code !== '23505') throw error; // 23505 = unique violation
+          if (error.code !== '23505') throw error;
         }
         window.location.href = 'teacher.html?room=' + roomId;
       } catch (err) {
@@ -117,35 +151,29 @@ const LiveQA = (function () {
 
     const questionInput = document.getElementById('questionInput');
     const postBtn = document.getElementById('postQuestionBtn');
-    const endBtn = document.getElementById('endQuestionBtn');
-    const activeBar = document.getElementById('activeQuestionBar');
-    const activeText = document.getElementById('activeQuestionText');
-    const answersWall = document.getElementById('answersWall');
+    const questionsList = document.getElementById('questionsList');
     const emptyState = document.getElementById('emptyState');
-    const answerCount = document.getElementById('answerCount');
-    const statAnswered = document.getElementById('statAnswered');
+    const questionCountEl = document.getElementById('questionCount');
+    const statQuestions = document.getElementById('statQuestions');
+    const statAnswers = document.getElementById('statAnswers');
     const statStudents = document.getElementById('statStudents');
     const studentCountEl = document.getElementById('studentCount');
 
+    let questionIndex = 0; // running counter for numbering
     let presenceChannel = null;
 
-    function showActiveQuestion(q) {
-      activeText.textContent = q;
-      activeBar.style.display = '';
-      postBtn.textContent = 'Post New Question';
-      endBtn.style.display = '';
+    function updateQuestionCount() {
+      const n = questionsList.querySelectorAll('.question-card').length;
+      questionCountEl.textContent = n;
+      statQuestions.textContent = n;
     }
 
-    function hideActiveQuestion() {
-      activeBar.style.display = 'none';
-      postBtn.textContent = 'Post Question';
-      endBtn.style.display = 'none';
-    }
-
-    function updateCount() {
-      const n = answersWall.querySelectorAll('.answer-card').length;
-      answerCount.textContent = n;
-      statAnswered.textContent = n;
+    function updateTotalAnswers() {
+      let total = 0;
+      questionsList.querySelectorAll('.question-card').forEach((card) => {
+        total += card.querySelectorAll('.answer-card').length;
+      });
+      statAnswers.textContent = total;
     }
 
     function updateStudentCount(count) {
@@ -153,46 +181,66 @@ const LiveQA = (function () {
       studentCountEl.textContent = count;
     }
 
-    async function loadExistingAnswers() {
-      const { data } = await sb.from('answers').select('*').eq('room_id', room).order('created_at', { ascending: true });
-      if (data) {
-        answersWall.innerHTML = '';
-        if (data.length === 0) {
-          answersWall.appendChild(emptyState);
-        } else {
-          data.forEach((a) => answersWall.appendChild(makeAnswerCard(a)));
-        }
-        updateCount();
+    function addAnswerToQuestion(questionId, answer) {
+      const card = questionsList.querySelector('.question-card[data-question-id="' + questionId + '"]');
+      if (!card) return;
+      const wall = card.querySelector('.answers-wall-inner');
+      const countEl = card.querySelector('.answer-count');
+      wall.insertBefore(makeAnswerCard(answer), wall.firstChild);
+      countEl.textContent = card.querySelectorAll('.answer-card').length;
+      updateTotalAnswers();
+    }
+
+    function addQuestionCard(q) {
+      if (emptyState.parentNode) emptyState.remove();
+      questionIndex++;
+      const card = makeQuestionCard(q, questionIndex, false);
+      // Newest question appears at the top
+      questionsList.insertBefore(card, questionsList.firstChild);
+      updateQuestionCount();
+    }
+
+    // Load existing questions + answers
+    async function loadQuestions() {
+      const { data: questions } = await sb.from('questions')
+        .select('*')
+        .eq('room_id', room)
+        .order('created_at', { ascending: true });
+
+      const { data: answers } = await sb.from('answers')
+        .select('*')
+        .eq('room_id', room)
+        .order('created_at', { ascending: true });
+
+      if (!questions) return;
+
+      questionsList.innerHTML = '';
+      questionIndex = 0;
+
+      if (questions.length === 0) {
+        questionsList.appendChild(emptyState);
+        return;
+      }
+
+      // Render questions oldest first (so Q1 is at bottom, newest at top)
+      questions.forEach((q) => addQuestionCard(q));
+
+      // Populate answers into the right question cards
+      if (answers) {
+        answers.forEach((a) => addAnswerToQuestion(a.question_id, a));
       }
     }
 
-    async function loadCurrentQuestion() {
-      const { data } = await sb.from('rooms').select('question').eq('room_id', room).single();
-      if (data && data.question) {
-        showActiveQuestion(data.question);
-        await loadExistingAnswers();
-      }
-    }
-
-    // Subscribe to question changes
-    sb.channel('rooms:' + room)
+    // Subscribe to new questions
+    sb.channel('questions:' + room)
       .on('postgres_changes', {
-        event: 'UPDATE',
+        event: 'INSERT',
         schema: 'public',
-        table: 'rooms',
+        table: 'questions',
         filter: 'room_id=eq.' + room,
       }, (payload) => {
-        const question = payload.new.question;
-        if (question) {
-          showActiveQuestion(question);
-          answersWall.innerHTML = '';
-          answersWall.appendChild(emptyState);
-          updateCount();
-          toast('Question posted', 'success');
-        } else {
-          hideActiveQuestion();
-          toast('Current question ended', 'success');
-        }
+        addQuestionCard(payload.new);
+        toast('Question posted', 'success');
       })
       .subscribe();
 
@@ -204,9 +252,7 @@ const LiveQA = (function () {
         table: 'answers',
         filter: 'room_id=eq.' + room,
       }, (payload) => {
-        if (emptyState.parentNode) emptyState.remove();
-        answersWall.insertBefore(makeAnswerCard(payload.new), answersWall.firstChild);
-        updateCount();
+        addAnswerToQuestion(payload.new.question_id, payload.new);
       })
       .subscribe();
 
@@ -217,7 +263,6 @@ const LiveQA = (function () {
 
     presenceChannel.on('presence', { event: 'sync' }, () => {
       const state = presenceChannel.presenceState();
-      // Count everyone except the teacher (key starts with 'teacher-')
       const students = Object.keys(state).filter((k) => !k.startsWith('teacher-'));
       updateStudentCount(students.length);
     });
@@ -229,7 +274,7 @@ const LiveQA = (function () {
     });
 
     // Load initial state
-    loadCurrentQuestion();
+    loadQuestions();
 
     postBtn.addEventListener('click', async () => {
       const q = questionInput.value.trim();
@@ -238,22 +283,11 @@ const LiveQA = (function () {
         return;
       }
       try {
-        // Clear old answers first, then set the new question
-        await sb.from('answers').delete().eq('room_id', room);
-        await sb.from('rooms').update({ question: q }).eq('room_id', room);
+        await sb.from('questions').insert({ room_id: room, question_text: q });
         questionInput.value = '';
       } catch (err) {
         console.error(err);
         toast('Failed to post question', 'error');
-      }
-    });
-
-    endBtn.addEventListener('click', async () => {
-      try {
-        await sb.from('rooms').update({ question: null }).eq('room_id', room);
-      } catch (err) {
-        console.error(err);
-        toast('Failed to end question', 'error');
       }
     });
 
@@ -277,71 +311,108 @@ const LiveQA = (function () {
 
     const sb = getSupabase();
 
-    const waitingState = document.getElementById('waitingState');
-    const questionArea = document.getElementById('questionArea');
-    const questionText = document.getElementById('questionText');
-    const answerInput = document.getElementById('answerInput');
-    const submitBtn = document.getElementById('submitAnswerBtn');
-    const answersWall = document.getElementById('answersWall');
-    const answerCount = document.getElementById('answerCount');
+    const questionsList = document.getElementById('questionsList');
+    const emptyState = document.getElementById('emptyState');
+    const questionCountEl = document.getElementById('questionCount');
 
+    let questionIndex = 0;
     let presenceChannel = null;
 
-    function showQuestion(q) {
-      questionText.textContent = q;
-      waitingState.style.display = 'none';
-      questionArea.style.display = '';
-      answerInput.focus();
+    function updateQuestionCount() {
+      questionCountEl.textContent = questionsList.querySelectorAll('.question-card').length;
     }
 
-    function hideQuestion() {
-      questionArea.style.display = 'none';
-      waitingState.style.display = '';
+    function addAnswerToQuestion(questionId, answer) {
+      const card = questionsList.querySelector('.question-card[data-question-id="' + questionId + '"]');
+      if (!card) return;
+      const wall = card.querySelector('.answers-wall-inner');
+      const countEl = card.querySelector('.answer-count');
+      wall.insertBefore(makeAnswerCard(answer), wall.firstChild);
+      countEl.textContent = card.querySelectorAll('.answer-card').length;
     }
 
-    function updateCount() {
-      answerCount.textContent = answersWall.querySelectorAll('.answer-card').length;
-    }
+    function addQuestionCard(q) {
+      if (emptyState.parentNode) emptyState.remove();
+      questionIndex++;
+      const card = makeQuestionCard(q, questionIndex, true);
+      questionsList.insertBefore(card, questionsList.firstChild);
 
-    async function loadExistingAnswers() {
-      const { data } = await sb.from('answers').select('*').eq('room_id', room).order('created_at', { ascending: true });
-      if (data) {
-        answersWall.innerHTML = '';
-        data.forEach((a) => answersWall.appendChild(makeAnswerCard(a)));
-        updateCount();
+      // Wire up the answer submit for this question
+      const input = card.querySelector('.answer-input');
+      const btn = card.querySelector('.submit-answer-btn');
+      const qid = card.dataset.questionId;
+
+      async function submitAnswer() {
+        const text = input.value.trim();
+        if (!text) {
+          toast('Please enter an answer', 'error');
+          return;
+        }
+        try {
+          await sb.from('answers').insert({
+            room_id: room,
+            question_id: qid,
+            answer: text,
+            student_name: name,
+          });
+          input.value = '';
+          toast('Answer submitted', 'success');
+        } catch (err) {
+          console.error(err);
+          toast('Failed to submit answer', 'error');
+        }
       }
+
+      btn.addEventListener('click', submitAnswer);
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') submitAnswer();
+      });
+
+      updateQuestionCount();
     }
 
-    async function loadCurrentQuestion() {
-      const { data, error } = await sb.from('rooms').select('question').eq('room_id', room).single();
-      if (error || !data) {
+    // Load existing questions + answers
+    async function loadQuestions() {
+      const { data: questions, error: qErr } = await sb.from('questions')
+        .select('*')
+        .eq('room_id', room)
+        .order('created_at', { ascending: true });
+
+      if (qErr || !questions) {
         toast('Classroom not found, please check the code', 'error');
         return;
       }
-      if (data.question) {
-        showQuestion(data.question);
-        await loadExistingAnswers();
+
+      const { data: answers } = await sb.from('answers')
+        .select('*')
+        .eq('room_id', room)
+        .order('created_at', { ascending: true });
+
+      questionsList.innerHTML = '';
+      questionIndex = 0;
+
+      if (questions.length === 0) {
+        questionsList.appendChild(emptyState);
+        return;
+      }
+
+      questions.forEach((q) => addQuestionCard(q));
+
+      if (answers) {
+        answers.forEach((a) => addAnswerToQuestion(a.question_id, a));
       }
     }
 
-    // Subscribe to question changes
-    sb.channel('rooms:' + room)
+    // Subscribe to new questions
+    sb.channel('questions:' + room)
       .on('postgres_changes', {
-        event: 'UPDATE',
+        event: 'INSERT',
         schema: 'public',
-        table: 'rooms',
+        table: 'questions',
         filter: 'room_id=eq.' + room,
       }, (payload) => {
-        const question = payload.new.question;
-        if (question) {
-          showQuestion(question);
-          answersWall.innerHTML = '';
-          updateCount();
-          toast('New question received!', 'success');
-        } else {
-          hideQuestion();
-          toast('Question ended', '');
-        }
+        addQuestionCard(payload.new);
+        toast('New question received!', 'success');
       })
       .subscribe();
 
@@ -353,12 +424,11 @@ const LiveQA = (function () {
         table: 'answers',
         filter: 'room_id=eq.' + room,
       }, (payload) => {
-        answersWall.insertBefore(makeAnswerCard(payload.new), answersWall.firstChild);
-        updateCount();
+        addAnswerToQuestion(payload.new.question_id, payload.new);
       })
       .subscribe();
 
-    // Presence: track online status
+    // Presence
     presenceChannel = sb.channel('presence:' + room, {
       config: { presence: { key: 'student-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) } },
     });
@@ -370,32 +440,7 @@ const LiveQA = (function () {
     });
 
     // Load initial state
-    loadCurrentQuestion();
-
-    submitBtn.addEventListener('click', submitAnswer);
-    answerInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') submitAnswer();
-    });
-
-    async function submitAnswer() {
-      const text = answerInput.value.trim();
-      if (!text) {
-        toast('Please enter an answer', 'error');
-        return;
-      }
-      try {
-        await sb.from('answers').insert({
-          room_id: room,
-          answer: text,
-          student_name: name,
-        });
-        answerInput.value = '';
-        toast('Answer submitted', 'success');
-      } catch (err) {
-        console.error(err);
-        toast('Failed to submit answer', 'error');
-      }
-    }
+    loadQuestions();
   }
 
   return { initEntry, initTeacher, initStudent };

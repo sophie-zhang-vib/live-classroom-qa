@@ -25,42 +25,19 @@
 
     <main class="app-main">
       <div class="student-view">
-        <!-- Waiting state -->
-        <div class="waiting-state" id="waitingState">
-          <div class="icon">&#9203;</div>
-          <h2>Waiting for teacher to post a question…</h2>
-          <p>Once your teacher posts a question, you'll see it here and can answer.</p>
-        </div>
-
-        <!-- Question display -->
-        <div id="questionArea" style="display:none;">
-          <div class="question-display">
-            <div class="q-label">Teacher's Question</div>
-            <div class="q-text" id="questionText"></div>
+        <!-- Questions list -->
+        <section class="questions-section">
+          <h3 class="section-title">
+            All Questions
+            <span class="count" id="questionCount">0</span>
+          </h3>
+          <div class="questions-list" id="questionsList">
+            <div class="empty-state" id="emptyState">
+              <div class="icon">&#9203;</div>
+              <div class="msg">Waiting for teacher to post a question…</div>
+            </div>
           </div>
-
-          <!-- Answer input -->
-          <div class="answer-input-bar">
-            <input
-              type="text"
-              class="input-field"
-              id="answerInput"
-              placeholder="Type your answer…"
-              maxlength="500"
-              autocomplete="off"
-            />
-            <button class="btn btn-primary" id="submitAnswerBtn">Submit</button>
-          </div>
-
-          <!-- Answer wall -->
-          <section class="answers-section">
-            <h3 class="section-title">
-              Classmates' Answers
-              <span class="count" id="answerCount">0</span>
-            </h3>
-            <div class="student-answers-wall" id="answersWall"></div>
-          </section>
-        </div>
+        </section>
       </div>
     </main>
   </div>

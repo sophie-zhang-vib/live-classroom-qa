@@ -601,6 +601,82 @@ h1, h2, h3, h4 {
 }
 
 /* ============================================
+   Question Cards (Multi-Question)
+   ============================================ */
+
+.questions-section {
+  margin-top: 28px;
+}
+
+.questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.question-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  border-top: 5px solid var(--coral);
+  animation: slideDown 0.4s ease both;
+  text-align: left;
+}
+
+.question-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.question-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  background: linear-gradient(135deg, var(--coral), var(--amber));
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-radius: 10px;
+}
+
+.question-time {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.question-card-text {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
+/* Answer input inside question cards */
+.question-card .answer-input-bar {
+  margin-bottom: 16px;
+}
+
+/* Answers section inside question cards */
+.question-card .answers-section {
+  margin-top: 0;
+}
+
+.section-title.small {
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+/* ============================================
    Student View
    ============================================ */
 
@@ -909,6 +985,21 @@ h1, h2, h3, h4 {
 
   .answer-input-bar .btn {
     width: 100%;
+  }
+
+  /* Question cards */
+  .question-card {
+    padding: 18px;
+  }
+
+  .question-card-text {
+    font-size: 1.15rem;
+  }
+
+  .question-number {
+    min-width: 34px;
+    height: 34px;
+    font-size: 1rem;
   }
 
   /* Answer wall */
