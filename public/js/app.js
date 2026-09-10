@@ -1,8 +1,11 @@
 /* ============================================
    Live Classroom Q&A — Frontend Logic
+   Powered by Supabase Realtime
    ============================================ */
 const LiveQA = (function () {
   'use strict';
+
+  let supabaseClient = null;
 
   // ---------- Utilities ----------
   function getQueryParam(name) {
@@ -26,9 +29,14 @@ const LiveQA = (function () {
     }, 2800);
   }
 
-  function connectWS() {
-    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    return new WebSocket(`${proto}://${window.location.host}/ws`);
+  function getSupabase() {
+    if (supabaseClient) return supabaseClient;
+    if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY ||
+        window.SUPABASE_URL.includes('YOUR-PROJECT-REF')) {
+      throw new Error('Supabase credentials not configured. Edit public/js/supabase-config.js');
+    }
+    supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    return supabaseClient;
   }
 
   function initialOf(name) {
@@ -46,6 +54,14 @@ const LiveQA = (function () {
     return card;
   }
 
+  function generateRoomId() {
+    let id = '';
+    for (let i = 0; i < 6; i++) {
+      id += Math.floor(Math.random() * 10).toString();
+    }
+    return id;
+  }
+
   // ---------- Entry Page ----------
   function initEntry() {
     const createBtn = document.getElementById('createRoomBtn');
@@ -53,18 +69,22 @@ const LiveQA = (function () {
     const roomInput = document.getElementById('roomCodeInput');
     const nameInput = document.getElementById('studentNameInput');
 
-    createBtn.addEventListener('click', () => {
-      const ws = connectWS();
-      ws.onopen = () => ws.send(JSON.stringify({ type: 'create_room' }));
-      ws.onmessage = (e) => {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'room_created') {
-          window.location.href = '/teacher.html?room=' + msg.room;
-        } else if (msg.type === 'error') {
-          toast(msg.message, 'error');
+    createBtn.addEventListener('click', async () => {
+      try {
+        const sb = getSupabase();
+        // Try up to 5 times to find a unique room ID
+        let roomId;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          roomId = generateRoomId();
+          const { error } = await sb.from('rooms').insert({ room_id: roomId });
+          if (!error) break;
+          if (error.code !== '23505') throw error; // 23505 = unique violation
         }
-      };
-      ws.onerror = () => toast('Connection failed, please try again', 'error');
+        window.location.href = 'teacher.html?room=' + roomId;
+      } catch (err) {
+        console.error(err);
+        toast('Failed to create classroom, please try again', 'error');
+      }
     });
 
     joinBtn.addEventListener('click', () => {
@@ -74,7 +94,7 @@ const LiveQA = (function () {
         return;
       }
       const name = encodeURIComponent(nameInput.value.trim());
-      window.location.href = '/student.html?room=' + room + '&name=' + name;
+      window.location.href = 'student.html?room=' + room + '&name=' + name;
     });
 
     roomInput.addEventListener('keypress', (e) => {
@@ -86,14 +106,14 @@ const LiveQA = (function () {
   function initTeacher() {
     const room = getQueryParam('room');
     if (!room) {
-      window.location.href = '/';
+      window.location.href = 'index.html';
       return;
     }
 
     document.getElementById('roomCodeDisplay').textContent = room;
     document.getElementById('statRoomCode').textContent = room;
 
-    const ws = connectWS();
+    const sb = getSupabase();
 
     const questionInput = document.getElementById('questionInput');
     const postBtn = document.getElementById('postQuestionBtn');
@@ -107,69 +127,7 @@ const LiveQA = (function () {
     const statStudents = document.getElementById('statStudents');
     const studentCountEl = document.getElementById('studentCount');
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'join', role: 'teacher', room: room }));
-    };
-
-    ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-      switch (msg.type) {
-        case 'joined':
-          if (msg.question) {
-            showActiveQuestion(msg.question);
-            msg.answers.forEach((a) => answersWall.appendChild(makeAnswerCard(a)));
-            updateCount();
-          }
-          break;
-        case 'question_posted':
-          showActiveQuestion(msg.question);
-          answersWall.innerHTML = '';
-          answersWall.appendChild(emptyState);
-          updateCount();
-          toast('Question posted', 'success');
-          break;
-        case 'answer_received':
-          if (emptyState.parentNode) emptyState.remove();
-          answersWall.insertBefore(makeAnswerCard(msg), answersWall.firstChild);
-          updateCount();
-          break;
-        case 'question_ended':
-          hideActiveQuestion();
-          toast('Current question ended', 'success');
-          break;
-        case 'student_count':
-          statStudents.textContent = msg.count;
-          studentCountEl.textContent = msg.count;
-          break;
-        case 'teacher_left':
-          toast('Teacher connection lost, reconnecting…', 'error');
-          break;
-        case 'error':
-          toast(msg.message, 'error');
-          break;
-      }
-    };
-
-    ws.onclose = () => toast('Connection lost, please refresh the page', 'error');
-    ws.onerror = () => toast('Connection error', 'error');
-
-    postBtn.addEventListener('click', () => {
-      const q = questionInput.value.trim();
-      if (!q) {
-        toast('Please enter a question', 'error');
-        return;
-      }
-      ws.send(JSON.stringify({ type: 'post_question', room: room, question: q }));
-      questionInput.value = '';
-    });
-
-    endBtn.addEventListener('click', () => {
-      ws.send(JSON.stringify({ type: 'end_question', room: room }));
-    });
-
-    questionInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) postBtn.click();
-    });
+    let presenceChannel = null;
 
     function showActiveQuestion(q) {
       activeText.textContent = q;
@@ -189,22 +147,136 @@ const LiveQA = (function () {
       answerCount.textContent = n;
       statAnswered.textContent = n;
     }
+
+    function updateStudentCount(count) {
+      statStudents.textContent = count;
+      studentCountEl.textContent = count;
+    }
+
+    async function loadExistingAnswers() {
+      const { data } = await sb.from('answers').select('*').eq('room_id', room).order('created_at', { ascending: true });
+      if (data) {
+        answersWall.innerHTML = '';
+        if (data.length === 0) {
+          answersWall.appendChild(emptyState);
+        } else {
+          data.forEach((a) => answersWall.appendChild(makeAnswerCard(a)));
+        }
+        updateCount();
+      }
+    }
+
+    async function loadCurrentQuestion() {
+      const { data } = await sb.from('rooms').select('question').eq('room_id', room).single();
+      if (data && data.question) {
+        showActiveQuestion(data.question);
+        await loadExistingAnswers();
+      }
+    }
+
+    // Subscribe to question changes
+    sb.channel('rooms:' + room)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'rooms',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        const question = payload.new.question;
+        if (question) {
+          showActiveQuestion(question);
+          answersWall.innerHTML = '';
+          answersWall.appendChild(emptyState);
+          updateCount();
+          toast('Question posted', 'success');
+        } else {
+          hideActiveQuestion();
+          toast('Current question ended', 'success');
+        }
+      })
+      .subscribe();
+
+    // Subscribe to new answers
+    sb.channel('answers:' + room)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'answers',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        if (emptyState.parentNode) emptyState.remove();
+        answersWall.insertBefore(makeAnswerCard(payload.new), answersWall.firstChild);
+        updateCount();
+      })
+      .subscribe();
+
+    // Presence: track online students
+    presenceChannel = sb.channel('presence:' + room, {
+      config: { presence: { key: 'teacher-' + Date.now() } },
+    });
+
+    presenceChannel.on('presence', { event: 'sync' }, () => {
+      const state = presenceChannel.presenceState();
+      // Count everyone except the teacher (key starts with 'teacher-')
+      const students = Object.keys(state).filter((k) => !k.startsWith('teacher-'));
+      updateStudentCount(students.length);
+    });
+
+    presenceChannel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await presenceChannel.track({ online_at: new Date().toISOString() });
+      }
+    });
+
+    // Load initial state
+    loadCurrentQuestion();
+
+    postBtn.addEventListener('click', async () => {
+      const q = questionInput.value.trim();
+      if (!q) {
+        toast('Please enter a question', 'error');
+        return;
+      }
+      try {
+        // Clear old answers first, then set the new question
+        await sb.from('answers').delete().eq('room_id', room);
+        await sb.from('rooms').update({ question: q }).eq('room_id', room);
+        questionInput.value = '';
+      } catch (err) {
+        console.error(err);
+        toast('Failed to post question', 'error');
+      }
+    });
+
+    endBtn.addEventListener('click', async () => {
+      try {
+        await sb.from('rooms').update({ question: null }).eq('room_id', room);
+      } catch (err) {
+        console.error(err);
+        toast('Failed to end question', 'error');
+      }
+    });
+
+    questionInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) postBtn.click();
+    });
   }
 
   // ---------- Student View ----------
   function initStudent() {
     const room = getQueryParam('room');
     const rawName = getQueryParam('name') || '';
-    const name = decodeURIComponent(rawName);
+    const name = decodeURIComponent(rawName) || 'Anonymous';
 
     if (!room) {
-      window.location.href = '/';
+      window.location.href = 'index.html';
       return;
     }
 
     document.getElementById('roomCodeDisplay').textContent = room;
 
-    const ws = connectWS();
+    const sb = getSupabase();
+
     const waitingState = document.getElementById('waitingState');
     const questionArea = document.getElementById('questionArea');
     const questionText = document.getElementById('questionText');
@@ -213,58 +285,7 @@ const LiveQA = (function () {
     const answersWall = document.getElementById('answersWall');
     const answerCount = document.getElementById('answerCount');
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'join', role: 'student', room: room, name: name || 'Anonymous' }));
-    };
-
-    ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-      switch (msg.type) {
-        case 'joined':
-          if (msg.question) {
-            showQuestion(msg.question);
-            msg.answers.forEach((a) => answersWall.appendChild(makeAnswerCard(a)));
-            updateCount();
-          }
-          break;
-        case 'question_posted':
-          showQuestion(msg.question);
-          answersWall.innerHTML = '';
-          updateCount();
-          toast('New question received!', 'success');
-          break;
-        case 'answer_received':
-          answersWall.insertBefore(makeAnswerCard(msg), answersWall.firstChild);
-          updateCount();
-          break;
-        case 'question_ended':
-          hideQuestion();
-          toast('Question ended', '');
-          break;
-        case 'error':
-          toast(msg.message, 'error');
-          break;
-      }
-    };
-
-    ws.onclose = () => toast('Connection lost, please refresh the page', 'error');
-    ws.onerror = () => toast('Connection error', 'error');
-
-    submitBtn.addEventListener('click', submitAnswer);
-    answerInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') submitAnswer();
-    });
-
-    function submitAnswer() {
-      const text = answerInput.value.trim();
-      if (!text) {
-        toast('Please enter an answer', 'error');
-        return;
-      }
-      ws.send(JSON.stringify({ type: 'submit_answer', room: room, answer: text, studentName: name || 'Anonymous' }));
-      answerInput.value = '';
-      toast('Answer submitted', 'success');
-    }
+    let presenceChannel = null;
 
     function showQuestion(q) {
       questionText.textContent = q;
@@ -280,6 +301,100 @@ const LiveQA = (function () {
 
     function updateCount() {
       answerCount.textContent = answersWall.querySelectorAll('.answer-card').length;
+    }
+
+    async function loadExistingAnswers() {
+      const { data } = await sb.from('answers').select('*').eq('room_id', room).order('created_at', { ascending: true });
+      if (data) {
+        answersWall.innerHTML = '';
+        data.forEach((a) => answersWall.appendChild(makeAnswerCard(a)));
+        updateCount();
+      }
+    }
+
+    async function loadCurrentQuestion() {
+      const { data, error } = await sb.from('rooms').select('question').eq('room_id', room).single();
+      if (error || !data) {
+        toast('Classroom not found, please check the code', 'error');
+        return;
+      }
+      if (data.question) {
+        showQuestion(data.question);
+        await loadExistingAnswers();
+      }
+    }
+
+    // Subscribe to question changes
+    sb.channel('rooms:' + room)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'rooms',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        const question = payload.new.question;
+        if (question) {
+          showQuestion(question);
+          answersWall.innerHTML = '';
+          updateCount();
+          toast('New question received!', 'success');
+        } else {
+          hideQuestion();
+          toast('Question ended', '');
+        }
+      })
+      .subscribe();
+
+    // Subscribe to new answers
+    sb.channel('answers:' + room)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'answers',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        answersWall.insertBefore(makeAnswerCard(payload.new), answersWall.firstChild);
+        updateCount();
+      })
+      .subscribe();
+
+    // Presence: track online status
+    presenceChannel = sb.channel('presence:' + room, {
+      config: { presence: { key: 'student-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) } },
+    });
+
+    presenceChannel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await presenceChannel.track({ name: name, online_at: new Date().toISOString() });
+      }
+    });
+
+    // Load initial state
+    loadCurrentQuestion();
+
+    submitBtn.addEventListener('click', submitAnswer);
+    answerInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') submitAnswer();
+    });
+
+    async function submitAnswer() {
+      const text = answerInput.value.trim();
+      if (!text) {
+        toast('Please enter an answer', 'error');
+        return;
+      }
+      try {
+        await sb.from('answers').insert({
+          room_id: room,
+          answer: text,
+          student_name: name,
+        });
+        answerInput.value = '';
+        toast('Answer submitted', 'success');
+      } catch (err) {
+        console.error(err);
+        toast('Failed to submit answer', 'error');
+      }
     }
   }
 
