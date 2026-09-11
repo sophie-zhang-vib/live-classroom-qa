@@ -882,6 +882,10 @@ h1, h2, h3, h4 {
   flex-shrink: 0;
 }
 
+.file-picker-name[hidden] {
+  display: none;
+}
+
 /* ---------- Answer file attachment ---------- */
 .answer-file {
   display: inline-flex;

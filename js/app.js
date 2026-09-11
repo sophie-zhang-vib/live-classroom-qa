@@ -140,7 +140,7 @@ const LiveQA = (function () {
             '</label>' +
             '<input type="text" class="input-field answer-input" placeholder="Type your answer…" maxlength="500" autocomplete="off" />' +
           '</div>' +
-          '<span class="file-picker-name">No file</span>' +
+          '<span class="file-picker-name" hidden></span>' +
           '<button class="btn btn-primary submit-answer-btn">Submit</button>' +
         '</div>' : '') +
       '<div class="answers-section">' +
@@ -707,8 +707,15 @@ const LiveQA = (function () {
 
       fileInput.addEventListener('change', () => {
         const f = fileInput.files[0];
-        fileNameLabel.textContent = f ? f.name : 'No file';
-        fileNameLabel.title = f ? f.name : '';
+        if (f) {
+          fileNameLabel.textContent = f.name;
+          fileNameLabel.title = f.name;
+          fileNameLabel.hidden = false;
+        } else {
+          fileNameLabel.textContent = '';
+          fileNameLabel.title = '';
+          fileNameLabel.hidden = true;
+        }
       });
 
       async function submitAnswer() {
@@ -750,7 +757,8 @@ const LiveQA = (function () {
 
           input.value = '';
           fileInput.value = '';
-          fileNameLabel.textContent = 'No file';
+          fileNameLabel.textContent = '';
+          fileNameLabel.hidden = true;
           toast('Answer submitted', 'success');
         } catch (err) {
           console.error(err);
