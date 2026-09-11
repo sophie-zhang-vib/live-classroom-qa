@@ -820,9 +820,137 @@ h1, h2, h3, h4 {
 }
 
 .answer-input-bar .input-field {
-  flex: 1;
+  width: 100%;
   font-size: 1.05rem;
 }
+
+/* Wrapper that holds the "+" button and the text input together */
+.answer-input-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.answer-input-wrap .answer-input {
+  padding-left: 44px;
+}
+
+/* ---------- Add-file "+" button inside the input box ---------- */
+.add-file-btn {
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--cream);
+  border: 1px solid var(--cream-dark);
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.add-file-btn:hover {
+  border-color: var(--coral);
+  background: var(--white);
+}
+
+.add-file-btn .add-file-icon {
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--coral);
+}
+
+/* ---------- File name display (student answer bar) ---------- */
+.file-picker-name {
+  display: inline-flex;
+  align-items: center;
+  max-width: 140px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+/* ---------- Answer file attachment ---------- */
+.answer-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: var(--cream);
+  border: 1px solid var(--cream-dark);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--ink);
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  max-width: 100%;
+}
+
+.answer-file:hover {
+  border-color: var(--coral);
+  background: var(--white);
+}
+
+.answer-file .file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.answer-file-image {
+  display: block;
+  padding: 6px;
+  max-width: 100%;
+}
+
+.answer-file-image img {
+  display: block;
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+
+/* File type icons (emoji-based) */
+.file-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--white);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.file-icon-pdf { background: #fde8e8; }
+.file-icon-word { background: #e8f0fd; }
+.file-icon-excel { background: #e8f8e8; }
+.file-icon-ppt { background: #fdf3e8; }
+.file-icon-archive { background: #f3e8fd; }
+.file-icon-file { background: var(--cream); }
+
+.file-icon-pdf::before { content: 'PDF'; font-size: 0.6rem; font-weight: 700; color: #d64545; }
+.file-icon-word::before { content: 'W'; font-weight: 700; color: #2b579a; }
+.file-icon-excel::before { content: 'X'; font-weight: 700; color: #217346; }
+.file-icon-ppt::before { content: 'P'; font-weight: 700; color: #d24726; }
+.file-icon-archive::before { content: 'Z'; font-weight: 700; color: #6b46c1; }
+.file-icon-image::before { content: '🖼'; font-size: 1.1rem; }
+.file-icon-file::before { content: '📄'; font-size: 1.1rem; }
 
 .student-answers-wall {
   display: grid;
@@ -1073,6 +1201,13 @@ h1, h2, h3, h4 {
 
   .answer-input-bar .btn {
     width: 100%;
+    justify-content: center;
+  }
+
+  .answer-input-bar .file-picker-name {
+    max-width: 100%;
+    justify-content: center;
+    padding: 4px 0;
   }
 
   /* Question cards */

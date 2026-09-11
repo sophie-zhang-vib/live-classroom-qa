@@ -57,14 +57,51 @@ const LiveQA = (function () {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
+  // ---------- Shared: file helper ----------
+  function getFileExtension(filename) {
+    if (!filename) return '';
+    const idx = filename.lastIndexOf('.');
+    return idx >= 0 ? filename.slice(idx + 1).toLowerCase() : '';
+  }
+
+  function getFileIcon(ext) {
+    const ex = (ext || '').toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ex)) return 'image';
+    if (['pdf'].includes(ex)) return 'pdf';
+    if (['doc', 'docx'].includes(ex)) return 'word';
+    if (['xls', 'xlsx', 'csv'].includes(ex)) return 'excel';
+    if (['ppt', 'pptx'].includes(ex)) return 'ppt';
+    if (['zip', 'rar', '7z'].includes(ex)) return 'archive';
+    return 'file';
+  }
+
   function makeAnswerCard(a) {
     const card = document.createElement('div');
     card.className = 'answer-card';
     card.style.animationDelay = (Math.random() * 0.12).toFixed(3) + 's';
+
+    let fileHtml = '';
+    if (a.file_url && a.file_name) {
+      const ext = getFileExtension(a.file_name);
+      const icon = getFileIcon(ext);
+      const isImage = icon === 'image';
+      fileHtml =
+        '<a class="answer-file ' + (isImage ? 'answer-file-image' : '') +
+        '" href="' + escapeHtml(a.file_url) + '" target="_blank" rel="noopener">' +
+        (isImage
+          ? '<img src="' + escapeHtml(a.file_url) + '" alt="' + escapeHtml(a.file_name) + '" />'
+          : '<span class="file-icon file-icon-' + icon + '"></span>') +
+        '<span class="file-name">' + escapeHtml(a.file_name) + '</span>' +
+        '</a>';
+    }
+
+    const textHtml = a.answer ? '<div class="text">' + escapeHtml(a.answer) + '</div>' : '';
+
     card.innerHTML =
       '<div class="student"><span class="avatar">' + escapeHtml(initialOf(a.student_name || a.studentName)) +
       '</span>' + escapeHtml(a.student_name || a.studentName || 'Anonymous') + '</div>' +
-      '<div class="text">' + escapeHtml(a.answer) + '</div>';
+      textHtml +
+      fileHtml;
     return card;
   }
 
@@ -96,7 +133,14 @@ const LiveQA = (function () {
       '<div class="question-card-text">' + escapeHtml(q.question_text) + '</div>' +
       (isStudent ?
         '<div class="answer-input-bar">' +
-          '<input type="text" class="input-field answer-input" placeholder="Type your answer…" maxlength="500" autocomplete="off" />' +
+          '<div class="answer-input-wrap">' +
+            '<label class="add-file-btn" title="Attach file (Word, PDF, image, etc.)">' +
+              '<input type="file" class="answer-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar" hidden />' +
+              '<span class="add-file-icon" aria-hidden="true">+</span>' +
+            '</label>' +
+            '<input type="text" class="input-field answer-input" placeholder="Type your answer…" maxlength="500" autocomplete="off" />' +
+          '</div>' +
+          '<span class="file-picker-name">No file</span>' +
           '<button class="btn btn-primary submit-answer-btn">Submit</button>' +
         '</div>' : '') +
       '<div class="answers-section">' +
@@ -384,17 +428,19 @@ const LiveQA = (function () {
           return;
         }
 
-        const rows = [['Question', 'Student', 'Answer', 'Time']];
+        const rows = [['Question', 'Student', 'Answer', 'File Name', 'File URL', 'Time']];
         questions.forEach((q) => {
           const qAnswers = (answers || []).filter((a) => a.question_id === q.id);
           if (qAnswers.length === 0) {
-            rows.push([q.question_text, '', '', '']);
+            rows.push([q.question_text, '', '', '', '', '']);
           } else {
             qAnswers.forEach((a) => {
               rows.push([
                 q.question_text,
                 a.student_name || 'Anonymous',
-                a.answer,
+                a.answer || '',
+                a.file_name || '',
+                a.file_url || '',
                 formatTime(a.created_at),
               ]);
             });
@@ -655,26 +701,63 @@ const LiveQA = (function () {
       // Wire up the answer submit for this question
       const input = card.querySelector('.answer-input');
       const btn = card.querySelector('.submit-answer-btn');
+      const fileInput = card.querySelector('.answer-file-input');
+      const fileNameLabel = card.querySelector('.file-picker-name');
       const qid = card.dataset.questionId;
+
+      fileInput.addEventListener('change', () => {
+        const f = fileInput.files[0];
+        fileNameLabel.textContent = f ? f.name : 'No file';
+        fileNameLabel.title = f ? f.name : '';
+      });
 
       async function submitAnswer() {
         const text = input.value.trim();
-        if (!text) {
-          toast('Please enter an answer', 'error');
+        const file = fileInput.files[0];
+
+        if (!text && !file) {
+          toast('Please enter an answer or attach a file', 'error');
           return;
         }
+
+        btn.disabled = true;
+        btn.textContent = 'Submitting…';
         try {
+          let fileUrl = null;
+          let fileName = null;
+
+          if (file) {
+            const fileExt = file.name.slice(file.name.lastIndexOf('.'));
+            const storagePath = room + '/' + qid + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + fileExt;
+            const { error: uploadErr } = await sb.storage
+              .from('answer-files')
+              .upload(storagePath, file, { upsert: false });
+            if (uploadErr) throw uploadErr;
+
+            const { data: urlData } = sb.storage.from('answer-files').getPublicUrl(storagePath);
+            fileUrl = urlData.publicUrl;
+            fileName = file.name;
+          }
+
           await sb.from('answers').insert({
             room_id: room,
             question_id: qid,
             answer: text,
             student_name: name,
+            file_url: fileUrl,
+            file_name: fileName,
           });
+
           input.value = '';
+          fileInput.value = '';
+          fileNameLabel.textContent = 'No file';
           toast('Answer submitted', 'success');
         } catch (err) {
           console.error(err);
           toast('Failed to submit answer', 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Submit';
         }
       }
 
