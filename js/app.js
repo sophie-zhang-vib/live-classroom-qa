@@ -424,6 +424,101 @@ const LiveQA = (function () {
         toast('Failed to export data', 'error');
       }
     });
+
+    // ---------- Response Viewer (Presentation Mode) ----------
+    const showResponsesBtn = document.getElementById('showResponsesBtn');
+    const rvOverlay = document.getElementById('rvOverlay');
+    const rvCloseBtn = document.getElementById('rvCloseBtn');
+    const rvPrevBtn = document.getElementById('rvPrevBtn');
+    const rvNextBtn = document.getElementById('rvNextBtn');
+    const rvQuestion = document.getElementById('rvQuestion');
+    const rvAnswers = document.getElementById('rvAnswers');
+    const rvPageIndicator = document.getElementById('rvPageIndicator');
+    const rvAnswerCount = document.getElementById('rvAnswerCount');
+
+    let rvPages = [];   // array of { question, answers }
+    let rvIndex = 0;     // current page index
+
+    function renderRvPage() {
+      const page = rvPages[rvIndex];
+      if (!page) return;
+      const { question, answers } = page;
+
+      rvQuestion.innerHTML =
+        '<div class="rv-q-number">Q' + (rvIndex + 1) + '</div>' +
+        '<div class="rv-q-text">' + escapeHtml(question.question_text) + '</div>' +
+        '<div class="rv-q-time">' + formatTime(question.created_at) + '</div>';
+
+      rvAnswers.innerHTML = '';
+      if (answers.length === 0) {
+        rvAnswers.innerHTML = '<div class="rv-empty">No responses yet</div>';
+      } else {
+        answers.forEach((a) => {
+          rvAnswers.appendChild(makeAnswerCard(a));
+        });
+      }
+
+      rvPageIndicator.textContent = getPageIndicator(rvIndex, rvPages.length);
+      rvAnswerCount.textContent = getAnswerCountLabel(answers.length);
+    }
+
+    function openResponseViewer() {
+      if (rvPages.length === 0) {
+        toast('No questions to show', 'error');
+        return;
+      }
+      rvIndex = 0;
+      renderRvPage();
+      rvOverlay.hidden = false;
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeResponseViewer() {
+      rvOverlay.hidden = true;
+      document.body.style.overflow = '';
+    }
+
+    showResponsesBtn.addEventListener('click', async () => {
+      try {
+        const { data: questions } = await sb.from('questions')
+          .select('*')
+          .eq('room_id', room)
+          .order('created_at', { ascending: true });
+
+        const { data: answers } = await sb.from('answers')
+          .select('*')
+          .eq('room_id', room)
+          .order('created_at', { ascending: true });
+
+        rvPages = buildResponsePages(questions, answers);
+        openResponseViewer();
+      } catch (err) {
+        console.error(err);
+        toast('Failed to load responses', 'error');
+      }
+    });
+
+    rvCloseBtn.addEventListener('click', closeResponseViewer);
+    rvOverlay.addEventListener('click', (e) => {
+      if (e.target === rvOverlay) closeResponseViewer();
+    });
+
+    rvPrevBtn.addEventListener('click', () => {
+      rvIndex = getPrevIndex(rvIndex, rvPages.length);
+      renderRvPage();
+    });
+
+    rvNextBtn.addEventListener('click', () => {
+      rvIndex = getNextIndex(rvIndex, rvPages.length);
+      renderRvPage();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (rvOverlay.hidden) return;
+      if (e.key === 'Escape') closeResponseViewer();
+      else if (e.key === 'ArrowLeft') rvPrevBtn.click();
+      else if (e.key === 'ArrowRight') rvNextBtn.click();
+    });
   }
 
   // ---------- Student View ----------

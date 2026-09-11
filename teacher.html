@@ -79,6 +79,7 @@
             <span class="stat-value" id="statRoomCode">------</span>
           </div>
           <button class="btn btn-teal export-btn" id="exportBtn">Export Q&A (CSV)</button>
+          <button class="btn btn-amber export-btn" id="showResponsesBtn">Show Responses</button>
           <div class="qr-section">
             <div class="qr-label">Scan to Join</div>
             <div id="qrCanvas"></div>
@@ -89,7 +90,27 @@
     </main>
   </div>
 
+  <!-- Response Viewer Modal (Presentation Mode) -->
+  <div class="rv-overlay" id="rvOverlay" hidden>
+    <div class="rv-modal">
+      <div class="rv-header">
+        <span class="rv-page-indicator" id="rvPageIndicator">Q1 of 1</span>
+        <button class="rv-close" id="rvCloseBtn" aria-label="Close">&times;</button>
+      </div>
+      <div class="rv-body">
+        <div class="rv-question" id="rvQuestion"></div>
+        <div class="rv-answers" id="rvAnswers"></div>
+      </div>
+      <div class="rv-footer">
+        <button class="btn btn-ghost" id="rvPrevBtn">&larr; Previous</button>
+        <span class="rv-answer-count" id="rvAnswerCount">0 answers</span>
+        <button class="btn btn-primary" id="rvNextBtn">Next &rarr;</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
+  <script src="js/response-viewer.js"></script>
   <script src="js/app.js"></script>
   <script>LiveQA.initTeacher();</script>
 </body>
