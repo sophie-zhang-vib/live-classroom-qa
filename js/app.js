@@ -438,6 +438,20 @@ const LiveQA = (function () {
 
     let rvPages = [];   // array of { question, answers }
     let rvIndex = 0;     // current page index
+    let answersRevealed = false; // whether students can see all answers
+
+    function setRevealButtonUI(revealed) {
+      answersRevealed = revealed;
+      if (revealed) {
+        showResponsesBtn.textContent = 'Hide Responses';
+        showResponsesBtn.classList.remove('btn-amber');
+        showResponsesBtn.classList.add('btn-ghost');
+      } else {
+        showResponsesBtn.textContent = 'Show Responses';
+        showResponsesBtn.classList.remove('btn-ghost');
+        showResponsesBtn.classList.add('btn-amber');
+      }
+    }
 
     function renderRvPage() {
       const page = rvPages[rvIndex];
@@ -480,21 +494,33 @@ const LiveQA = (function () {
 
     showResponsesBtn.addEventListener('click', async () => {
       try {
-        const { data: questions } = await sb.from('questions')
-          .select('*')
-          .eq('room_id', room)
-          .order('created_at', { ascending: true });
+        // Toggle the reveal state in the database.
+        // When ON: students see all answers AND teacher modal opens.
+        // When OFF: students' answers are hidden again.
+        const nextRevealed = !answersRevealed;
+        await sb.from('rooms').update({ show_answers: nextRevealed }).eq('room_id', room);
+        setRevealButtonUI(nextRevealed);
 
-        const { data: answers } = await sb.from('answers')
-          .select('*')
-          .eq('room_id', room)
-          .order('created_at', { ascending: true });
+        if (nextRevealed) {
+          const { data: questions } = await sb.from('questions')
+            .select('*')
+            .eq('room_id', room)
+            .order('created_at', { ascending: true });
 
-        rvPages = buildResponsePages(questions, answers);
-        openResponseViewer();
+          const { data: answers } = await sb.from('answers')
+            .select('*')
+            .eq('room_id', room)
+            .order('created_at', { ascending: true });
+
+          rvPages = buildResponsePages(questions, answers);
+          openResponseViewer();
+          toast('Responses revealed to students', 'success');
+        } else {
+          toast('Responses hidden from students', 'success');
+        }
       } catch (err) {
         console.error(err);
-        toast('Failed to load responses', 'error');
+        toast('Failed to update response visibility', 'error');
       }
     });
 
@@ -519,6 +545,24 @@ const LiveQA = (function () {
       else if (e.key === 'ArrowLeft') rvPrevBtn.click();
       else if (e.key === 'ArrowRight') rvNextBtn.click();
     });
+
+    // Load initial reveal state and keep it in sync across teacher tabs.
+    sb.from('rooms').select('show_answers').eq('room_id', room).single()
+      .then(({ data }) => setRevealButtonUI(!!(data && data.show_answers)))
+      .catch((err) => console.error('Failed to load reveal state', err));
+
+    sb.channel('rooms-state:' + room)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'rooms',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        if (typeof payload.new.show_answers === 'boolean') {
+          setRevealButtonUI(payload.new.show_answers);
+        }
+      })
+      .subscribe();
   }
 
   // ---------- Student View ----------
@@ -542,18 +586,64 @@ const LiveQA = (function () {
 
     let questionIndex = 0;
     let presenceChannel = null;
+    let showAnswers = false; // controlled by teacher via rooms.show_answers
+    const answersByQuestion = {}; // questionId -> array of answers
 
     function updateQuestionCount() {
       questionCountEl.textContent = questionsList.querySelectorAll('.question-card').length;
     }
 
-    function addAnswerToQuestion(questionId, answer) {
+    function getOwnAnswers(questionId) {
+      const list = answersByQuestion[questionId] || [];
+      return list.filter((a) => (a.student_name || a.studentName) === name);
+    }
+
+    function getAllAnswers(questionId) {
+      return answersByQuestion[questionId] || [];
+    }
+
+    // Re-render the answer wall for a single question based on reveal state.
+    function renderAnswersForQuestion(questionId) {
       const card = questionsList.querySelector('.question-card[data-question-id="' + questionId + '"]');
       if (!card) return;
       const wall = card.querySelector('.answers-wall-inner');
       const countEl = card.querySelector('.answer-count');
-      wall.insertBefore(makeAnswerCard(answer), wall.firstChild);
-      countEl.textContent = card.querySelectorAll('.answer-card').length;
+      const titleEl = card.querySelector('.section-title.small');
+      const all = getAllAnswers(questionId);
+      const visible = showAnswers ? all : getOwnAnswers(questionId);
+
+      wall.innerHTML = '';
+      // Show most recent first
+      visible.slice().reverse().forEach((a) => wall.appendChild(makeAnswerCard(a)));
+
+      if (!showAnswers) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'answers-placeholder';
+        placeholder.textContent = 'Responses will be revealed by your teacher…';
+        wall.appendChild(placeholder);
+        if (titleEl) titleEl.firstChild.textContent = 'Your Answer ';
+      } else {
+        if (titleEl) titleEl.firstChild.textContent = "Classmates' Answers ";
+      }
+
+      countEl.textContent = all.length;
+    }
+
+    // Apply the teacher-controlled reveal flag and re-render everything.
+    function applyRevealState(revealed) {
+      showAnswers = !!revealed;
+      renderAllAnswers();
+    }
+
+    // Re-render every question's answer wall (used when reveal state flips).
+    function renderAllAnswers() {
+      Object.keys(answersByQuestion).forEach(renderAnswersForQuestion);
+    }
+
+    function addAnswerToQuestion(questionId, answer) {
+      if (!answersByQuestion[questionId]) answersByQuestion[questionId] = [];
+      answersByQuestion[questionId].push(answer);
+      renderAnswersForQuestion(questionId);
     }
 
     function addQuestionCard(q) {
@@ -670,6 +760,20 @@ const LiveQA = (function () {
       })
       .subscribe();
 
+    // Subscribe to teacher toggling answer visibility
+    sb.channel('rooms-reveal:' + room)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'rooms',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        if (typeof payload.new.show_answers === 'boolean') {
+          applyRevealState(payload.new.show_answers);
+        }
+      })
+      .subscribe();
+
     // Presence
     presenceChannel = sb.channel('presence:' + room, {
       config: { presence: { key: 'student-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) } },
@@ -681,7 +785,15 @@ const LiveQA = (function () {
       }
     });
 
-    // Load initial state
+    // Load initial state (questions + answers + reveal flag)
+    sb.from('rooms').select('show_answers').eq('room_id', room).single()
+      .then(({ data }) => {
+        if (data && typeof data.show_answers === 'boolean') {
+          applyRevealState(data.show_answers);
+        }
+      })
+      .catch((err) => console.error('Failed to load reveal state', err));
+
     loadQuestions();
   }
 

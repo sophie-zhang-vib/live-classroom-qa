@@ -831,6 +831,18 @@ h1, h2, h3, h4 {
   text-align: left;
 }
 
+.answers-placeholder {
+  grid-column: 1 / -1;
+  padding: 14px 16px;
+  background: var(--cream);
+  border: 1px dashed var(--cream-dark);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-style: italic;
+  text-align: center;
+}
+
 /* ============================================
    Animations
    ============================================ */
