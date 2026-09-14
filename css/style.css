@@ -472,6 +472,22 @@ h1, h2, h3, h4 {
   flex-wrap: wrap;
 }
 
+.composer-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.composer-left .question-file-name {
+  max-width: 220px;
+}
+
+.question-card .question-file {
+  margin: 14px 0 4px;
+}
+
 .stats-panel {
   background: var(--white);
   border-radius: var(--radius-lg);
@@ -1112,13 +1128,8 @@ h1, h2, h3, h4 {
     gap: 12px;
   }
 
-  .composer-actions > span {
-    text-align: center;
-  }
-
-  .composer-actions > div[style] {
-    width: 100%;
-    gap: 8px !important;
+  .composer-left {
+    justify-content: center;
   }
 
   .composer-actions .btn {

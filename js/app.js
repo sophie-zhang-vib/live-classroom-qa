@@ -124,13 +124,32 @@ const LiveQA = (function () {
         '</div>';
     }
 
+    // Attached file (image preview or file link)
+    let fileHtml = '';
+    if (q.file_url && q.file_name) {
+      const ext = getFileExtension(q.file_name);
+      const icon = getFileIcon(ext);
+      const isImage = icon === 'image';
+      fileHtml =
+        '<a class="answer-file question-file ' + (isImage ? 'answer-file-image' : '') +
+        '" href="' + escapeHtml(q.file_url) + '" target="_blank" rel="noopener">' +
+        (isImage
+          ? '<img src="' + escapeHtml(q.file_url) + '" alt="' + escapeHtml(q.file_name) + '" />'
+          : '<span class="file-icon file-icon-' + icon + '"></span>') +
+        '<span class="file-name">' + escapeHtml(q.file_name) + '</span>' +
+        '</a>';
+    }
+
+    const textHtml = q.question_text ? '<div class="question-card-text">' + escapeHtml(q.question_text) + '</div>' : '';
+
     card.innerHTML =
       '<div class="question-card-header">' +
         '<span class="question-number">Q' + index + '</span>' +
         '<span class="question-time">' + formatTime(q.created_at) + '</span>' +
         actionsHtml +
       '</div>' +
-      '<div class="question-card-text">' + escapeHtml(q.question_text) + '</div>' +
+      textHtml +
+      fileHtml +
       (isStudent ?
         '<div class="answer-input-bar">' +
           '<div class="answer-input-wrap">' +
@@ -212,6 +231,8 @@ const LiveQA = (function () {
 
     const questionInput = document.getElementById('questionInput');
     const postBtn = document.getElementById('postQuestionBtn');
+    const questionFileInput = document.getElementById('questionFileInput');
+    const questionFileNameLabel = document.querySelector('.question-file-name');
     const exportBtn = document.getElementById('exportBtn');
     const questionsList = document.getElementById('questionsList');
     const emptyState = document.getElementById('emptyState');
@@ -369,18 +390,53 @@ const LiveQA = (function () {
       });
     }
 
+    questionFileInput.addEventListener('change', () => {
+      const f = questionFileInput.files[0];
+      if (f) {
+        questionFileNameLabel.textContent = f.name;
+        questionFileNameLabel.title = f.name;
+        questionFileNameLabel.hidden = false;
+      } else {
+        questionFileNameLabel.textContent = '';
+        questionFileNameLabel.title = '';
+        questionFileNameLabel.hidden = true;
+      }
+    });
+
     postBtn.addEventListener('click', async () => {
       const q = questionInput.value.trim();
-      if (!q) {
-        toast('Please enter a question', 'error');
+      const file = questionFileInput.files[0];
+      if (!q && !file) {
+        toast('Please enter a question or attach a file', 'error');
         return;
       }
       try {
+        let fileUrl = null;
+        let fileName = null;
+
+        if (file) {
+          const fileExt = file.name.slice(file.name.lastIndexOf('.'));
+          const storagePath = room + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + fileExt;
+          const { error: uploadErr } = await sb.storage
+            .from('question-files')
+            .upload(storagePath, file, { upsert: false });
+          if (uploadErr) throw uploadErr;
+
+          const { data: urlData } = sb.storage.from('question-files').getPublicUrl(storagePath);
+          fileUrl = urlData.publicUrl;
+          fileName = file.name;
+        }
+
         await sb.from('questions').insert({
           room_id: room,
           question_text: q,
+          file_url: fileUrl,
+          file_name: fileName,
         });
         questionInput.value = '';
+        questionFileInput.value = '';
+        questionFileNameLabel.textContent = '';
+        questionFileNameLabel.hidden = true;
       } catch (err) {
         console.error(err);
         toast('Failed to post question', 'error');
@@ -428,15 +484,17 @@ const LiveQA = (function () {
           return;
         }
 
-        const rows = [['Question', 'Student', 'Answer', 'File Name', 'File URL', 'Time']];
+        const rows = [['Question', 'Question File Name', 'Question File URL', 'Student', 'Answer', 'File Name', 'File URL', 'Time']];
         questions.forEach((q) => {
           const qAnswers = (answers || []).filter((a) => a.question_id === q.id);
           if (qAnswers.length === 0) {
-            rows.push([q.question_text, '', '', '', '', '']);
+            rows.push([q.question_text || '', q.file_name || '', q.file_url || '', '', '', '', '', '']);
           } else {
             qAnswers.forEach((a) => {
               rows.push([
-                q.question_text,
+                q.question_text || '',
+                q.file_name || '',
+                q.file_url || '',
                 a.student_name || 'Anonymous',
                 a.answer || '',
                 a.file_name || '',

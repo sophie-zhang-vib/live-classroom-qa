@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Teacher Dashboard · Live QA</title>
-  <link rel="stylesheet" href="css/style.css?v=2" />
+  <link rel="stylesheet" href="css/style.css?v=3" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/qrcode.min.js"></script>
   <script src="js/supabase-config.js"></script>
@@ -38,10 +38,14 @@
               rows="3"
             ></textarea>
             <div class="composer-actions">
-              <span style="color:var(--muted); font-size:0.9rem;">Students can answer all questions using the same room code</span>
-              <div style="display:flex; gap:10px;">
-                <button class="btn btn-primary" id="postQuestionBtn">Post Question</button>
+              <div class="composer-left">
+                <label class="add-file-btn" title="Attach file (image, PDF, etc.)">
+                  <input type="file" id="questionFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.svg,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar" hidden />
+                  <span class="add-file-icon" aria-hidden="true">+</span>
+                </label>
+                <span class="file-picker-name question-file-name" hidden></span>
               </div>
+              <button class="btn btn-primary" id="postQuestionBtn">Post Question</button>
             </div>
           </div>
 
@@ -111,7 +115,7 @@
 
   <div class="toast" id="toast"></div>
   <script src="js/response-viewer.js"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/app.js?v=3"></script>
   <script>LiveQA.initTeacher();</script>
 </body>
 </html>

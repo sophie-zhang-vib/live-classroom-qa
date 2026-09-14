@@ -17,6 +17,8 @@ create table if not exists public.questions (
   question_text text not null,
   correct_answer text,
   show_answer boolean not null default false,
+  file_url text,
+  file_name text,
   created_at timestamptz not null default now()
 );
 
@@ -90,3 +92,33 @@ create policy "answers_delete" on public.answers
 alter publication supabase_realtime add table public.rooms;
 alter publication supabase_realtime add table public.questions;
 alter publication supabase_realtime add table public.answers;
+
+-- ============================================
+-- Storage buckets for file attachments
+-- ============================================
+
+-- Answer files bucket
+insert into storage.buckets (id, name, public)
+values ('answer-files', 'answer-files', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Public read access to answer files" on storage.objects;
+create policy "Public read access to answer files" on storage.objects
+  for select using (bucket_id = 'answer-files'::text);
+
+drop policy if exists "Allow anon uploads to answer files" on storage.objects;
+create policy "Allow anon uploads to answer files" on storage.objects
+  for insert with check (bucket_id = 'answer-files'::text);
+
+-- Question files bucket
+insert into storage.buckets (id, name, public)
+values ('question-files', 'question-files', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Public read access to question files" on storage.objects;
+create policy "Public read access to question files" on storage.objects
+  for select using (bucket_id = 'question-files'::text);
+
+drop policy if exists "Allow anon uploads to question files" on storage.objects;
+create policy "Allow anon uploads to question files" on storage.objects
+  for insert with check (bucket_id = 'question-files'::text);
