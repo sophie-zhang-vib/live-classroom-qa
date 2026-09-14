@@ -75,10 +75,75 @@ const LiveQA = (function () {
     return 'file';
   }
 
+  // ---------- Shared: reactions & comments state ----------
+  // viewerName: name of the current user (student name in student view, 'Teacher' in teacher view)
+  let viewerName = 'Anonymous';
+
+  // reactionsByAnswer: answerId -> { like: Set<names>, inspiring: Set<names>, surprise: Set<names> }
+  const reactionsByAnswer = {};
+  // commentsByAnswer: answerId -> array of comment objects
+  const commentsByAnswer = {};
+
+  const REACTION_TYPES = [
+    { key: 'like', label: 'Like', icon: '👍' },
+    { key: 'inspiring', label: 'Inspiring', icon: '✨' },
+    { key: 'surprise', label: 'Surprise', icon: '😮' },
+  ];
+
+  function getReactionEntry(answerId) {
+    if (!reactionsByAnswer[answerId]) {
+      reactionsByAnswer[answerId] = { like: new Set(), inspiring: new Set(), surprise: new Set() };
+    }
+    return reactionsByAnswer[answerId];
+  }
+
+  function getReactionCount(answerId, type) {
+    return getReactionEntry(answerId)[type].size;
+  }
+
+  function hasReacted(answerId, type) {
+    return getReactionEntry(answerId)[type].has(viewerName);
+  }
+
+  function setReactionFromRow(row) {
+    getReactionEntry(row.answer_id)[row.reaction_type].add(row.student_name);
+  }
+
+  function removeReactionFromRow(row) {
+    getReactionEntry(row.answer_id)[row.reaction_type].delete(row.student_name);
+  }
+
+  function getComments(answerId) {
+    return commentsByAnswer[answerId] || [];
+  }
+
+  function addComment(comment) {
+    if (!commentsByAnswer[comment.answer_id]) commentsByAnswer[comment.answer_id] = [];
+    commentsByAnswer[comment.answer_id].push(comment);
+  }
+
+  function removeCommentById(id) {
+    Object.keys(commentsByAnswer).forEach((aid) => {
+      commentsByAnswer[aid] = commentsByAnswer[aid].filter((c) => c.id !== id);
+    });
+  }
+
+  function renderComments(answerId) {
+    const list = getComments(answerId);
+    if (list.length === 0) return '';
+    return list.map((c) =>
+      '<div class="answer-comment">' +
+        '<span class="comment-author">' + escapeHtml(c.student_name || 'Anonymous') + ':</span> ' +
+        '<span class="comment-text">' + escapeHtml(c.comment_text) + '</span>' +
+      '</div>'
+    ).join('');
+  }
+
   function makeAnswerCard(a) {
     const card = document.createElement('div');
     card.className = 'answer-card';
     card.style.animationDelay = (Math.random() * 0.12).toFixed(3) + 's';
+    card.dataset.answerId = a.id;
 
     let fileHtml = '';
     if (a.file_url && a.file_name) {
@@ -97,13 +162,150 @@ const LiveQA = (function () {
 
     const textHtml = a.answer ? '<div class="text">' + escapeHtml(a.answer) + '</div>' : '';
 
+    // Reaction buttons
+    const reactionsHtml = REACTION_TYPES.map((r) => {
+      const count = getReactionCount(a.id, r.key);
+      const active = hasReacted(a.id, r.key);
+      return '<button class="reaction-btn ' + (active ? 'active' : '') + '" data-reaction="' + r.key + '" title="' + r.label + '">' +
+        '<span class="reaction-icon">' + r.icon + '</span>' +
+        '<span class="reaction-count">' + count + '</span>' +
+        '</button>';
+    }).join('');
+
+    const commentCount = getComments(a.id).length;
+
     card.innerHTML =
       '<div class="student"><span class="avatar">' + escapeHtml(initialOf(a.student_name || a.studentName)) +
       '</span>' + escapeHtml(a.student_name || a.studentName || 'Anonymous') + '</div>' +
       textHtml +
-      fileHtml;
+      fileHtml +
+      '<div class="answer-actions">' +
+        reactionsHtml +
+        '<button class="reaction-btn comment-toggle-btn" title="Comment">' +
+          '<span class="reaction-icon">💬</span>' +
+          '<span class="reaction-count">' + commentCount + '</span>' +
+        '</button>' +
+      '</div>' +
+      '<div class="answer-comments" hidden>' +
+        '<div class="comments-list">' + renderComments(a.id) + '</div>' +
+        '<div class="comment-input-row">' +
+          '<input type="text" class="comment-input" placeholder="Write a comment…" maxlength="300" />' +
+          '<button class="btn btn-primary btn-sm comment-send-btn">Send</button>' +
+        '</div>' +
+      '</div>';
+
+    // Wire up reaction buttons
+    card.querySelectorAll('.reaction-btn[data-reaction]').forEach((btn) => {
+      btn.addEventListener('click', () => toggleReaction(a.id, btn.dataset.reaction));
+    });
+
+    // Wire up comment toggle
+    const toggleBtn = card.querySelector('.comment-toggle-btn');
+    const commentsSection = card.querySelector('.answer-comments');
+    toggleBtn.addEventListener('click', () => {
+      commentsSection.hidden = !commentsSection.hidden;
+      if (!commentsSection.hidden) {
+        const inp = commentsSection.querySelector('.comment-input');
+        if (inp) inp.focus();
+      }
+    });
+
+    // Wire up comment send
+    const sendBtn = card.querySelector('.comment-send-btn');
+    const commentInput = card.querySelector('.comment-input');
+    function sendComment() {
+      const txt = commentInput.value.trim();
+      if (!txt) return;
+      submitComment(a.id, txt);
+      commentInput.value = '';
+    }
+    sendBtn.addEventListener('click', sendComment);
+    commentInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendComment();
+    });
+
     return card;
   }
+
+  // Refresh reaction counts / active state / comments for a single answer card in place
+  function refreshAnswerCardInteractions(answerId) {
+    const cards = document.querySelectorAll('.answer-card[data-answer-id="' + answerId + '"]');
+    cards.forEach((card) => {
+      // Reactions
+      card.querySelectorAll('.reaction-btn[data-reaction]').forEach((btn) => {
+        const type = btn.dataset.reaction;
+        btn.querySelector('.reaction-count').textContent = getReactionCount(answerId, type);
+        btn.classList.toggle('active', hasReacted(answerId, type));
+      });
+      // Comment count
+      const countEl = card.querySelector('.comment-toggle-btn .reaction-count');
+      if (countEl) countEl.textContent = getComments(answerId).length;
+      // Comments list
+      const listEl = card.querySelector('.comments-list');
+      if (listEl) listEl.innerHTML = renderComments(answerId);
+    });
+  }
+
+  // Toggle a reaction on an answer (insert if not reacted, delete if already reacted)
+  async function toggleReaction(answerId, type) {
+    try {
+      const sb = getSupabase();
+      const name = viewerName;
+      if (hasReacted(answerId, type)) {
+        await sb.from('answer_reactions')
+          .delete()
+          .eq('answer_id', answerId)
+          .eq('student_name', name)
+          .eq('reaction_type', type);
+      } else {
+        await sb.from('answer_reactions').insert({
+          answer_id: answerId,
+          student_name: name,
+          reaction_type: type,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast('Failed to update reaction', 'error');
+    }
+  }
+
+  // Submit a comment on an answer
+  async function submitComment(answerId, text) {
+    try {
+      const sb = getSupabase();
+      await sb.from('answer_comments').insert({
+        answer_id: answerId,
+        student_name: viewerName,
+        comment_text: text,
+      });
+    } catch (err) {
+      console.error(err);
+      toast('Failed to post comment', 'error');
+    }
+  }
+
+  // Load all reactions and comments for a room (or all answers in the room)
+  async function loadReactionsAndComments(room) {
+    try {
+      const sb = getSupabase();
+      const { data: reactions } = await sb.from('answer_reactions')
+        .select('*')
+        .eq('answer_id', 'not.is.null');
+      // Filter by room via answer_id is not directly possible; load all and filter client-side
+      // To keep it efficient, load reactions for answers in this room via a join isn't trivial with anon.
+      // We load all reactions (small dataset) and they get associated by answer_id.
+      (reactions || []).forEach(setReactionFromRow);
+
+      const { data: comments } = await sb.from('answer_comments')
+        .select('*')
+        .order('created_at', { ascending: true });
+      (comments || []).forEach(addComment);
+    } catch (err) {
+      console.error('Failed to load reactions/comments', err);
+    }
+  }
+
 
   // ---------- Shared: create a question card ----------
   // isStudent: if true, includes answer input bar; else shows delete button
@@ -224,6 +426,7 @@ const LiveQA = (function () {
       return;
     }
 
+    viewerName = 'Teacher';
     document.getElementById('roomCodeDisplay').textContent = room;
     document.getElementById('statRoomCode').textContent = room;
 
@@ -357,6 +560,46 @@ const LiveQA = (function () {
       })
       .subscribe();
 
+    // Subscribe to reactions on answers
+    sb.channel('reactions:' + room)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'answer_reactions',
+      }, (payload) => {
+        setReactionFromRow(payload.new);
+        refreshAnswerCardInteractions(payload.new.answer_id);
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'answer_reactions',
+      }, (payload) => {
+        removeReactionFromRow(payload.old);
+        refreshAnswerCardInteractions(payload.old.answer_id);
+      })
+      .subscribe();
+
+    // Subscribe to comments on answers
+    sb.channel('comments:' + room)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'answer_comments',
+      }, (payload) => {
+        addComment(payload.new);
+        refreshAnswerCardInteractions(payload.new.answer_id);
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'answer_comments',
+      }, (payload) => {
+        removeCommentById(payload.old.id);
+        refreshAnswerCardInteractions(payload.old.answer_id);
+      })
+      .subscribe();
+
     // Presence: track online students
     presenceChannel = sb.channel('presence:' + room, {
       config: { presence: { key: 'teacher-' + Date.now() } },
@@ -375,6 +618,7 @@ const LiveQA = (function () {
     });
 
     // Load initial state
+    loadReactionsAndComments(room);
     loadQuestions();
 
     // Generate QR code for students to scan and join
@@ -674,6 +918,7 @@ const LiveQA = (function () {
     const room = getQueryParam('room');
     const rawName = getQueryParam('name') || '';
     const name = decodeURIComponent(rawName) || 'Anonymous';
+    viewerName = name;
 
     if (!room) {
       window.location.href = 'index.html';
@@ -909,6 +1154,46 @@ const LiveQA = (function () {
       })
       .subscribe();
 
+    // Subscribe to reactions on answers
+    sb.channel('reactions:' + room)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'answer_reactions',
+      }, (payload) => {
+        setReactionFromRow(payload.new);
+        refreshAnswerCardInteractions(payload.new.answer_id);
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'answer_reactions',
+      }, (payload) => {
+        removeReactionFromRow(payload.old);
+        refreshAnswerCardInteractions(payload.old.answer_id);
+      })
+      .subscribe();
+
+    // Subscribe to comments on answers
+    sb.channel('comments:' + room)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'answer_comments',
+      }, (payload) => {
+        addComment(payload.new);
+        refreshAnswerCardInteractions(payload.new.answer_id);
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'answer_comments',
+      }, (payload) => {
+        removeCommentById(payload.old.id);
+        refreshAnswerCardInteractions(payload.old.answer_id);
+      })
+      .subscribe();
+
     // Subscribe to teacher toggling answer visibility
     sb.channel('rooms-reveal:' + room)
       .on('postgres_changes', {
@@ -943,6 +1228,7 @@ const LiveQA = (function () {
       })
       .catch((err) => console.error('Failed to load reveal state', err));
 
+    loadReactionsAndComments(room);
     loadQuestions();
   }
 

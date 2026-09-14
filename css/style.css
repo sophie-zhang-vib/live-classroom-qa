@@ -677,6 +677,110 @@ h1, h2, h3, h4 {
   word-break: break-word;
 }
 
+/* ---------- Reactions & comments on answer cards ---------- */
+.answer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.reaction-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--cream-dark);
+  background: var(--cream);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+
+.reaction-btn:hover {
+  border-color: var(--coral);
+  background: var(--white);
+}
+
+.reaction-btn:active {
+  transform: scale(0.95);
+}
+
+.reaction-btn.active {
+  border-color: var(--coral);
+  background: rgba(230, 57, 70, 0.1);
+  color: var(--coral-dark);
+}
+
+.reaction-btn .reaction-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.reaction-btn .reaction-count {
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.answer-comments {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--cream-dark);
+}
+
+.answer-comments[hidden] {
+  display: none;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.answer-comment {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  background: var(--cream);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.answer-comment .comment-author {
+  font-weight: 700;
+  color: var(--coral);
+}
+
+.comment-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.comment-input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  border: 1px solid var(--cream-dark);
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-family: var(--font-body);
+  background: var(--white);
+}
+
+.comment-input:focus {
+  border-color: var(--coral);
+}
+
+.comment-send-btn {
+  padding: 8px 16px !important;
+  font-size: 0.85rem !important;
+}
+
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -937,18 +1041,23 @@ h1, h2, h3, h4 {
   white-space: nowrap;
 }
 
-.answer-file-image {
-  display: block;
-  padding: 6px;
+.answer-file.answer-file-image {
+  display: block !important;
+  padding: 8px;
   max-width: 100%;
+  width: 100%;
+  overflow: visible;
 }
 
-.answer-file-image img {
-  display: block;
-  width: 100%;
-  max-height: 240px;
-  object-fit: cover;
+.answer-file.answer-file-image img {
+  display: block !important;
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 60vh !important;
+  object-fit: contain !important;
   border-radius: var(--radius-sm);
+  margin: 0 auto;
 }
 
 /* File type icons (emoji-based) */

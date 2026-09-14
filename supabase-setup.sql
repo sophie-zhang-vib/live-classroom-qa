@@ -37,6 +37,29 @@ create table if not exists public.answers (
 create index if not exists answers_room_id_idx on public.answers(room_id);
 create index if not exists answers_question_id_idx on public.answers(question_id);
 
+-- Reactions table: like, inspiring, surprise per answer per student
+create table if not exists public.answer_reactions (
+  id uuid primary key default gen_random_uuid(),
+  answer_id uuid not null references public.answers(id) on delete cascade,
+  student_name text not null,
+  reaction_type text not null check (reaction_type in ('like', 'inspiring', 'surprise')),
+  created_at timestamptz not null default now(),
+  unique (answer_id, student_name, reaction_type)
+);
+
+create index if not exists answer_reactions_answer_id_idx on public.answer_reactions(answer_id);
+
+-- Comments table: threaded comments on answers
+create table if not exists public.answer_comments (
+  id uuid primary key default gen_random_uuid(),
+  answer_id uuid not null references public.answers(id) on delete cascade,
+  student_name text not null,
+  comment_text text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists answer_comments_answer_id_idx on public.answer_comments(answer_id);
+
 -- Enable Row Level Security
 alter table public.rooms enable row level security;
 alter table public.questions enable row level security;
@@ -88,10 +111,42 @@ create policy "answers_insert" on public.answers
 create policy "answers_delete" on public.answers
   for delete using (true);
 
+-- Answer reactions: allow anyone to read, create, and delete their own
+alter table public.answer_reactions enable row level security;
+drop policy if exists "answer_reactions_select" on public.answer_reactions;
+drop policy if exists "answer_reactions_insert" on public.answer_reactions;
+drop policy if exists "answer_reactions_delete" on public.answer_reactions;
+
+create policy "answer_reactions_select" on public.answer_reactions
+  for select using (true);
+
+create policy "answer_reactions_insert" on public.answer_reactions
+  for insert with check (true);
+
+create policy "answer_reactions_delete" on public.answer_reactions
+  for delete using (true);
+
+-- Answer comments: allow anyone to read, create, and delete their own
+alter table public.answer_comments enable row level security;
+drop policy if exists "answer_comments_select" on public.answer_comments;
+drop policy if exists "answer_comments_insert" on public.answer_comments;
+drop policy if exists "answer_comments_delete" on public.answer_comments;
+
+create policy "answer_comments_select" on public.answer_comments
+  for select using (true);
+
+create policy "answer_comments_insert" on public.answer_comments
+  for insert with check (true);
+
+create policy "answer_comments_delete" on public.answer_comments
+  for delete using (true);
+
 -- Enable Realtime on all tables
 alter publication supabase_realtime add table public.rooms;
 alter publication supabase_realtime add table public.questions;
 alter publication supabase_realtime add table public.answers;
+alter publication supabase_realtime add table public.answer_reactions;
+alter publication supabase_realtime add table public.answer_comments;
 
 -- ============================================
 -- Storage buckets for file attachments
