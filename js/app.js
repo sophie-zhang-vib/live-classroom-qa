@@ -378,6 +378,8 @@ const LiveQA = (function () {
     const joinBtn = document.getElementById('joinRoomBtn');
     const roomInput = document.getElementById('roomCodeInput');
     const nameInput = document.getElementById('studentNameInput');
+    const teacherRoomInput = document.getElementById('teacherRoomCodeInput');
+    const rejoinBtn = document.getElementById('rejoinRoomBtn');
 
     // Pre-fill room code if provided in URL (e.g. from QR code scan)
     const urlRoom = getQueryParam('room');
@@ -402,6 +404,41 @@ const LiveQA = (function () {
         toast('Failed to create classroom, please try again', 'error');
       }
     });
+
+    // Teacher rejoin existing classroom
+    if (rejoinBtn && teacherRoomInput) {
+      rejoinBtn.addEventListener('click', async () => {
+        const room = teacherRoomInput.value.trim();
+        if (!/^\d{6}$/.test(room)) {
+          toast('Please enter a 6-digit classroom code', 'error');
+          return;
+        }
+        try {
+          const sb = getSupabase();
+          const { data, error } = await sb
+            .from('rooms')
+            .select('room_id')
+            .eq('room_id', room)
+            .maybeSingle();
+          if (error) {
+            toast('Failed to rejoin classroom, please try again', 'error');
+            return;
+          }
+          if (!data) {
+            toast('Classroom not found, please check the code', 'error');
+            return;
+          }
+          window.location.href = 'teacher.html?room=' + room;
+        } catch (err) {
+          console.error('Rejoin catch error:', err);
+          toast('Failed to rejoin classroom, please try again', 'error');
+        }
+      });
+
+      teacherRoomInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') rejoinBtn.click();
+      });
+    }
 
     joinBtn.addEventListener('click', () => {
       const room = roomInput.value.trim();

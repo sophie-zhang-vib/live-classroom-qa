@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Live Classroom Q&amp;A</title>
-  <link rel="stylesheet" href="css/style.css?v=12" />
+  <link rel="stylesheet" href="css/style.css?v=13" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-config.js"></script>
 </head>
@@ -23,6 +23,20 @@
         <h2 class="role-title">I'm a Teacher</h2>
         <p class="role-desc">Create a classroom, post questions, and receive student answers in real time.</p>
         <button class="btn btn-teal" id="createRoomBtn">Create Classroom</button>
+        <div class="teacher-rejoin">
+          <span class="rejoin-divider">or rejoin an existing classroom</span>
+          <div class="input-row">
+            <input
+              type="text"
+              class="input-field room-code-input"
+              id="teacherRoomCodeInput"
+              placeholder="Enter classroom code"
+              maxlength="6"
+              autocomplete="off"
+            />
+            <button class="btn btn-outline" id="rejoinRoomBtn">Rejoin</button>
+          </div>
+        </div>
       </div>
 
       <!-- Student card -->
@@ -58,7 +72,7 @@
   </main>
 
   <div class="toast" id="toast"></div>
-  <script src="js/app.js?v=6"></script>
+  <script src="js/app.js?v=15"></script>
   <script>LiveQA.initEntry();</script>
 </body>
 </html>

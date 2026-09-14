@@ -136,6 +136,19 @@ h1, h2, h3, h4 {
   color: var(--cream);
 }
 
+.btn-outline {
+  background: transparent;
+  color: var(--teal);
+  border: 2px solid var(--teal);
+  box-shadow: none;
+}
+
+.btn-outline:hover {
+  background: var(--teal);
+  color: var(--white);
+  transform: translateY(-2px);
+}
+
 .btn-danger {
   color: var(--coral) !important;
   border-color: var(--coral) !important;
@@ -309,6 +322,33 @@ h1, h2, h3, h4 {
 
 .join-form .input-row .input-field {
   flex: 1;
+}
+
+/* Teacher rejoin classroom */
+.teacher-rejoin {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--cream-dark);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rejoin-divider {
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-align: center;
+  font-weight: 500;
+}
+
+.teacher-rejoin .input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.teacher-rejoin .input-row .input-field {
+  flex: 1;
+  min-width: 0;
 }
 
 .room-code-input {
