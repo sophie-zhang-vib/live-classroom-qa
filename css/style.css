@@ -344,11 +344,26 @@ h1, h2, h3, h4 {
 .teacher-rejoin .input-row {
   display: flex;
   gap: 10px;
+  align-items: center;
 }
 
 .teacher-rejoin .input-row .input-field {
   flex: 1;
   min-width: 0;
+}
+
+/* Override room-code-input styles for teacher rejoin */
+.teacher-rejoin .room-code-input {
+  letter-spacing: normal;
+  text-align: left;
+  font-size: 1rem;
+}
+
+.teacher-rejoin .btn-outline {
+  flex-shrink: 0;
+  width: auto;
+  padding: 10px 18px;
+  white-space: nowrap;
 }
 
 .room-code-input {
