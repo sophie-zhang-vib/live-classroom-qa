@@ -445,10 +445,14 @@ h1, h2, h3, h4 {
   margin-bottom: 12px;
 }
 
+.question-textarea-wrap {
+  position: relative;
+}
+
 .question-textarea {
   width: 100%;
   min-height: 120px;
-  padding: 18px;
+  padding: 18px 18px 56px 18px;
   font-family: var(--font-display);
   font-size: 1.3rem;
   line-height: 1.4;
@@ -463,6 +467,21 @@ h1, h2, h3, h4 {
   border-color: var(--coral);
 }
 
+/* "+" attach button positioned at bottom-left inside the textarea */
+.question-textarea-wrap .question-add-file-btn {
+  top: auto;
+  bottom: 12px;
+  left: 12px;
+}
+
+.question-file-name {
+  position: absolute;
+  left: 52px;
+  bottom: 16px;
+  max-width: calc(100% - 70px);
+  font-size: 0.8rem;
+}
+
 .composer-actions {
   display: flex;
   justify-content: space-between;
@@ -470,18 +489,6 @@ h1, h2, h3, h4 {
   margin-top: 16px;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.composer-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-
-.composer-left .question-file-name {
-  max-width: 220px;
 }
 
 .question-card .question-file {
@@ -1119,17 +1126,13 @@ h1, h2, h3, h4 {
   .question-textarea {
     font-size: 1.1rem;
     min-height: 100px;
-    padding: 14px;
+    padding: 14px 14px 52px 14px;
   }
 
   .composer-actions {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
-  }
-
-  .composer-left {
-    justify-content: center;
   }
 
   .composer-actions .btn {

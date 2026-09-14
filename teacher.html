@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Teacher Dashboard · Live QA</title>
-  <link rel="stylesheet" href="css/style.css?v=3" />
+  <link rel="stylesheet" href="css/style.css?v=5" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/qrcode.min.js"></script>
   <script src="js/supabase-config.js"></script>
@@ -31,20 +31,21 @@
           <!-- Question composer -->
           <div class="question-composer">
             <div class="composer-label">Post a New Question</div>
-            <textarea
-              class="question-textarea"
-              id="questionInput"
-              placeholder="Type your question here, e.g. What is the capital of France?"
-              rows="3"
-            ></textarea>
+            <div class="question-textarea-wrap">
+              <textarea
+                class="question-textarea"
+                id="questionInput"
+                placeholder="Type your question here, e.g. What is the capital of France?"
+                rows="3"
+              ></textarea>
+              <label class="add-file-btn question-add-file-btn" title="Attach file (image, PDF, etc.)">
+                <input type="file" id="questionFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.svg,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar" hidden />
+                <span class="add-file-icon" aria-hidden="true">+</span>
+              </label>
+              <span class="file-picker-name question-file-name" hidden></span>
+            </div>
             <div class="composer-actions">
-              <div class="composer-left">
-                <label class="add-file-btn" title="Attach file (image, PDF, etc.)">
-                  <input type="file" id="questionFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.svg,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar" hidden />
-                  <span class="add-file-icon" aria-hidden="true">+</span>
-                </label>
-                <span class="file-picker-name question-file-name" hidden></span>
-              </div>
+              <span style="color:var(--muted); font-size:0.9rem;">Students can answer all questions using the same room code</span>
               <button class="btn btn-primary" id="postQuestionBtn">Post Question</button>
             </div>
           </div>
@@ -115,7 +116,7 @@
 
   <div class="toast" id="toast"></div>
   <script src="js/response-viewer.js"></script>
-  <script src="js/app.js?v=3"></script>
+  <script src="js/app.js?v=5"></script>
   <script>LiveQA.initTeacher();</script>
 </body>
 </html>
