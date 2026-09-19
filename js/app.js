@@ -359,7 +359,7 @@ const LiveQA = (function () {
               '<input type="file" class="answer-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar" hidden />' +
               '<span class="add-file-icon" aria-hidden="true">+</span>' +
             '</label>' +
-            '<input type="text" class="input-field answer-input" placeholder="Type your answer…" maxlength="500" autocomplete="off" />' +
+            '<input type="text" class="input-field answer-input" placeholder="Type your answer…" autocomplete="off" />' +
           '</div>' +
           '<span class="file-picker-name" hidden></span>' +
           '<button class="btn btn-primary submit-answer-btn">Submit</button>' +
