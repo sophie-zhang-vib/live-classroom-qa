@@ -85,9 +85,9 @@ const LiveQA = (function () {
   const commentsByAnswer = {};
 
   const REACTION_TYPES = [
-    { key: 'like', label: 'Like', icon: '👍' },
-    { key: 'inspiring', label: 'Inspiring', icon: '✨' },
-    { key: 'surprise', label: 'Surprise', icon: '😮' },
+    { key: 'like', labelKey: 'reaction.like', icon: '👍' },
+    { key: 'inspiring', labelKey: 'reaction.inspiring', icon: '✨' },
+    { key: 'surprise', labelKey: 'reaction.surprise', icon: '😮' },
   ];
 
   function getReactionEntry(answerId) {
@@ -133,7 +133,7 @@ const LiveQA = (function () {
     if (list.length === 0) return '';
     return list.map((c) =>
       '<div class="answer-comment">' +
-        '<span class="comment-author">' + escapeHtml(c.student_name || 'Anonymous') + ':</span> ' +
+        '<span class="comment-author">' + escapeHtml(c.student_name || i18n.t('common.anonymous')) + ':</span> ' +
         '<span class="comment-text">' + escapeHtml(c.comment_text) + '</span>' +
       '</div>'
     ).join('');
@@ -166,7 +166,7 @@ const LiveQA = (function () {
     const reactionsHtml = REACTION_TYPES.map((r) => {
       const count = getReactionCount(a.id, r.key);
       const active = hasReacted(a.id, r.key);
-      return '<button class="reaction-btn ' + (active ? 'active' : '') + '" data-reaction="' + r.key + '" title="' + r.label + '">' +
+      return '<button class="reaction-btn ' + (active ? 'active' : '') + '" data-reaction="' + r.key + '" title="' + i18n.t(r.labelKey) + '">' +
         '<span class="reaction-icon">' + r.icon + '</span>' +
         '<span class="reaction-count">' + count + '</span>' +
         '</button>';
@@ -176,12 +176,12 @@ const LiveQA = (function () {
 
     card.innerHTML =
       '<div class="student"><span class="avatar">' + escapeHtml(initialOf(a.student_name || a.studentName)) +
-      '</span>' + escapeHtml(a.student_name || a.studentName || 'Anonymous') + '</div>' +
+      '</span>' + escapeHtml(a.student_name || a.studentName || i18n.t('common.anonymous')) + '</div>' +
       textHtml +
       fileHtml +
       '<div class="answer-actions">' +
         reactionsHtml +
-        '<button class="reaction-btn comment-toggle-btn" title="Comment">' +
+        '<button class="reaction-btn comment-toggle-btn" title="' + i18n.t('reaction.comment') + '">' +
           '<span class="reaction-icon">💬</span>' +
           '<span class="reaction-count">' + commentCount + '</span>' +
         '</button>' +
@@ -189,8 +189,8 @@ const LiveQA = (function () {
       '<div class="answer-comments" hidden>' +
         '<div class="comments-list">' + renderComments(a.id) + '</div>' +
         '<div class="comment-input-row">' +
-          '<input type="text" class="comment-input" placeholder="Write a comment…" maxlength="300" />' +
-          '<button class="btn btn-primary btn-sm comment-send-btn">Send</button>' +
+          '<input type="text" class="comment-input" placeholder="' + i18n.t('answer.commentPlaceholder') + '" maxlength="300" />' +
+          '<button class="btn btn-primary btn-sm comment-send-btn">' + i18n.t('common.send') + '</button>' +
         '</div>' +
       '</div>';
 
@@ -266,7 +266,7 @@ const LiveQA = (function () {
       }
     } catch (err) {
       console.error(err);
-      toast('Failed to update reaction', 'error');
+      toast(i18n.t('toast.reactionFailed'), 'error');
     }
   }
 
@@ -281,7 +281,7 @@ const LiveQA = (function () {
       });
     } catch (err) {
       console.error(err);
-      toast('Failed to post comment', 'error');
+      toast(i18n.t('toast.commentFailed'), 'error');
     }
   }
 
@@ -315,14 +315,14 @@ const LiveQA = (function () {
     card.dataset.questionId = q.id;
 
     const answersWallClass = isStudent ? 'student-answers-wall' : 'answers-wall';
-    const answersTitle = isStudent ? "Classmates' Answers" : 'Answers';
+    const answersTitle = isStudent ? i18n.t('student.classmatesAnswers') : i18n.t('student.answersTitle');
 
     // Teacher action buttons (Delete only)
     let actionsHtml = '';
     if (!isStudent) {
       actionsHtml =
         '<div class="question-actions">' +
-          '<button class="btn btn-ghost btn-sm btn-danger delete-question-btn">Delete</button>' +
+          '<button class="btn btn-ghost btn-sm btn-danger delete-question-btn">' + i18n.t('common.delete') + '</button>' +
         '</div>';
     }
 
@@ -355,14 +355,14 @@ const LiveQA = (function () {
       (isStudent ?
         '<div class="answer-input-bar">' +
           '<div class="answer-input-wrap">' +
-            '<label class="add-file-btn" title="Attach file (Word, PDF, image, etc.)">' +
+            '<label class="add-file-btn" title="' + i18n.t('student.answerAttach') + '">' +
               '<input type="file" class="answer-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar" hidden />' +
               '<span class="add-file-icon" aria-hidden="true">+</span>' +
             '</label>' +
-            '<input type="text" class="input-field answer-input" placeholder="Type your answer…" autocomplete="off" />' +
+            '<input type="text" class="input-field answer-input" placeholder="' + i18n.t('student.answerPlaceholder') + '" autocomplete="off" />' +
           '</div>' +
           '<span class="file-picker-name" hidden></span>' +
-          '<button class="btn btn-primary submit-answer-btn">Submit</button>' +
+          '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
         '</div>' : '') +
       '<div class="answers-section">' +
         '<h4 class="section-title small">' + answersTitle + ' <span class="count answer-count">0</span></h4>' +
@@ -401,7 +401,7 @@ const LiveQA = (function () {
         window.location.href = 'teacher.html?room=' + roomId;
       } catch (err) {
         console.error(err);
-        toast('Failed to create classroom, please try again', 'error');
+        toast(i18n.t('toast.createFailed'), 'error');
       }
     });
 
@@ -410,7 +410,7 @@ const LiveQA = (function () {
       rejoinBtn.addEventListener('click', async () => {
         const room = teacherRoomInput.value.trim();
         if (!/^\d{6}$/.test(room)) {
-          toast('Please enter a 6-digit classroom code', 'error');
+          toast(i18n.t('toast.invalidCode'), 'error');
           return;
         }
         try {
@@ -421,17 +421,17 @@ const LiveQA = (function () {
             .eq('room_id', room)
             .maybeSingle();
           if (error) {
-            toast('Failed to rejoin classroom, please try again', 'error');
+            toast(i18n.t('toast.rejoinFailed'), 'error');
             return;
           }
           if (!data) {
-            toast('Classroom not found, please check the code', 'error');
+            toast(i18n.t('toast.classroomNotFound'), 'error');
             return;
           }
           window.location.href = 'teacher.html?room=' + room;
         } catch (err) {
           console.error('Rejoin catch error:', err);
-          toast('Failed to rejoin classroom, please try again', 'error');
+          toast(i18n.t('toast.rejoinFailed'), 'error');
         }
       });
 
@@ -443,7 +443,7 @@ const LiveQA = (function () {
     joinBtn.addEventListener('click', () => {
       const room = roomInput.value.trim();
       if (!/^\d{6}$/.test(room)) {
-        toast('Please enter a 6-digit classroom code', 'error');
+        toast(i18n.t('toast.invalidCode'), 'error');
         return;
       }
       const name = encodeURIComponent(nameInput.value.trim());
@@ -463,7 +463,7 @@ const LiveQA = (function () {
       return;
     }
 
-    viewerName = 'Teacher';
+    viewerName = i18n.t('common.teacher');
     document.getElementById('roomCodeDisplay').textContent = room;
     document.getElementById('statRoomCode').textContent = room;
 
@@ -573,7 +573,7 @@ const LiveQA = (function () {
         filter: 'room_id=eq.' + room,
       }, (payload) => {
         addQuestionCard(payload.new);
-        toast('Question posted', 'success');
+        toast(i18n.t('toast.questionPosted'), 'success');
       })
       .on('postgres_changes', {
         event: 'DELETE',
@@ -688,7 +688,7 @@ const LiveQA = (function () {
       const q = questionInput.value.trim();
       const file = questionFileInput.files[0];
       if (!q && !file) {
-        toast('Please enter a question or attach a file', 'error');
+        toast(i18n.t('toast.questionRequired'), 'error');
         return;
       }
       try {
@@ -720,7 +720,7 @@ const LiveQA = (function () {
         questionFileNameLabel.hidden = true;
       } catch (err) {
         console.error(err);
-        toast('Failed to post question', 'error');
+        toast(i18n.t('toast.postFailed'), 'error');
       }
     });
 
@@ -737,13 +737,13 @@ const LiveQA = (function () {
       if (!card) return;
       const qid = card.dataset.questionId;
 
-      if (!confirm('Delete this question and all its answers?')) return;
+      if (!confirm(i18n.t('toast.deleteConfirm'))) return;
       try {
         await sb.from('questions').delete().eq('id', qid);
-        toast('Question deleted', 'success');
+        toast(i18n.t('toast.questionDeleted'), 'success');
       } catch (err) {
         console.error(err);
-        toast('Failed to delete question', 'error');
+        toast(i18n.t('toast.deleteQuestionFailed'), 'error');
       }
     });
 
@@ -761,7 +761,7 @@ const LiveQA = (function () {
           .order('created_at', { ascending: true });
 
         if (!questions || questions.length === 0) {
-          toast('No questions to export', 'error');
+          toast(i18n.t('toast.noExportData'), 'error');
           return;
         }
 
@@ -776,7 +776,7 @@ const LiveQA = (function () {
                 q.question_text || '',
                 q.file_name || '',
                 q.file_url || '',
-                a.student_name || 'Anonymous',
+                a.student_name || i18n.t('common.anonymous'),
                 a.answer || '',
                 a.file_name || '',
                 a.file_url || '',
@@ -803,10 +803,10 @@ const LiveQA = (function () {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        toast('Exported ' + (rows.length - 1) + ' row(s)', 'success');
+        toast(i18n.t('toast.exportedRows', { n: rows.length - 1 }), 'success');
       } catch (err) {
         console.error(err);
-        toast('Failed to export data', 'error');
+        toast(i18n.t('toast.exportFailed'), 'error');
       }
     });
 
@@ -828,11 +828,11 @@ const LiveQA = (function () {
     function setRevealButtonUI(revealed) {
       answersRevealed = revealed;
       if (revealed) {
-        showResponsesBtn.textContent = 'Hide Responses';
+        showResponsesBtn.textContent = i18n.t('teacher.hideResponses');
         showResponsesBtn.classList.remove('btn-amber');
         showResponsesBtn.classList.add('btn-ghost');
       } else {
-        showResponsesBtn.textContent = 'Show Responses';
+        showResponsesBtn.textContent = i18n.t('teacher.showResponses');
         showResponsesBtn.classList.remove('btn-ghost');
         showResponsesBtn.classList.add('btn-amber');
       }
@@ -850,7 +850,7 @@ const LiveQA = (function () {
 
       rvAnswers.innerHTML = '';
       if (answers.length === 0) {
-        rvAnswers.innerHTML = '<div class="rv-empty">No responses yet</div>';
+        rvAnswers.innerHTML = '<div class="rv-empty">' + i18n.t('rv.noResponses') + '</div>';
       } else {
         answers.forEach((a) => {
           rvAnswers.appendChild(makeAnswerCard(a));
@@ -863,7 +863,7 @@ const LiveQA = (function () {
 
     function openResponseViewer() {
       if (rvPages.length === 0) {
-        toast('No questions to show', 'error');
+        toast(i18n.t('rv.noQuestions'), 'error');
         return;
       }
       rvIndex = 0;
@@ -899,13 +899,13 @@ const LiveQA = (function () {
 
           rvPages = buildResponsePages(questions, answers);
           openResponseViewer();
-          toast('Responses revealed to students', 'success');
+          toast(i18n.t('toast.revealed'), 'success');
         } else {
-          toast('Responses hidden from students', 'success');
+          toast(i18n.t('toast.hidden'), 'success');
         }
       } catch (err) {
         console.error(err);
-        toast('Failed to update response visibility', 'error');
+        toast(i18n.t('toast.revealFailed'), 'error');
       }
     });
 
@@ -954,7 +954,7 @@ const LiveQA = (function () {
   function initStudent() {
     const room = getQueryParam('room');
     const rawName = getQueryParam('name') || '';
-    const name = decodeURIComponent(rawName) || 'Anonymous';
+    const name = decodeURIComponent(rawName) || i18n.t('common.anonymous');
     viewerName = name;
 
     if (!room) {
@@ -1005,11 +1005,11 @@ const LiveQA = (function () {
       if (!showAnswers) {
         const placeholder = document.createElement('div');
         placeholder.className = 'answers-placeholder';
-        placeholder.textContent = 'Responses will be revealed by your teacher…';
+        placeholder.textContent = i18n.t('student.placeholder');
         wall.appendChild(placeholder);
-        if (titleEl) titleEl.firstChild.textContent = 'Your Answer ';
+        if (titleEl) titleEl.firstChild.textContent = i18n.t('student.yourAnswer') + ' ';
       } else {
-        if (titleEl) titleEl.firstChild.textContent = "Classmates' Answers ";
+        if (titleEl) titleEl.firstChild.textContent = i18n.t('student.classmatesAnswers') + ' ';
       }
 
       countEl.textContent = all.length;
@@ -1063,12 +1063,12 @@ const LiveQA = (function () {
         const file = fileInput.files[0];
 
         if (!text && !file) {
-          toast('Please enter an answer or attach a file', 'error');
+          toast(i18n.t('toast.answerRequired'), 'error');
           return;
         }
 
         btn.disabled = true;
-        btn.textContent = 'Submitting…';
+        btn.textContent = i18n.t('toast.submitting');
         try {
           let fileUrl = null;
           let fileName = null;
@@ -1099,13 +1099,13 @@ const LiveQA = (function () {
           fileInput.value = '';
           fileNameLabel.textContent = '';
           fileNameLabel.hidden = true;
-          toast('Answer submitted', 'success');
+          toast(i18n.t('toast.answerSubmitted'), 'success');
         } catch (err) {
           console.error(err);
-          toast('Failed to submit answer', 'error');
+          toast(i18n.t('toast.answerFailed'), 'error');
         } finally {
           btn.disabled = false;
-          btn.textContent = 'Submit';
+          btn.textContent = i18n.t('common.submit');
         }
       }
 
@@ -1134,7 +1134,7 @@ const LiveQA = (function () {
         .order('created_at', { ascending: true });
 
       if (qErr || !questions) {
-        toast('Classroom not found, please check the code', 'error');
+        toast(i18n.t('toast.classroomNotFound'), 'error');
         return;
       }
 
@@ -1167,7 +1167,7 @@ const LiveQA = (function () {
         filter: 'room_id=eq.' + room,
       }, (payload) => {
         addQuestionCard(payload.new);
-        toast('New question received!', 'success');
+        toast(i18n.t('toast.newQuestion'), 'success');
       })
       .on('postgres_changes', {
         event: 'DELETE',

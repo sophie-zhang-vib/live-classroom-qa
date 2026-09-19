@@ -31,9 +31,9 @@ function buildResponsePages(questions, answers) {
  */
 function getPageIndicator(currentIndex, totalPages) {
   var safeTotal = Math.max(0, totalPages | 0);
-  if (safeTotal === 0) return 'Q0 of 0';
+  if (safeTotal === 0) return i18n.t('rv.pageIndicator', { n: 0, total: 0 });
   var safeIndex = Math.min(Math.max(0, currentIndex | 0), safeTotal - 1);
-  return 'Q' + (safeIndex + 1) + ' of ' + safeTotal;
+  return i18n.t('rv.pageIndicator', { n: safeIndex + 1, total: safeTotal });
 }
 
 /**
@@ -63,7 +63,7 @@ function getNextIndex(currentIndex, totalPages) {
  */
 function getAnswerCountLabel(count) {
   var n = Math.max(0, count | 0);
-  return n === 1 ? '1 answer' : n + ' answers';
+  return i18n.t('rv.answerCount', { n: n });
 }
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Teacher Dashboard · Live QA</title>
-  <link rel="stylesheet" href="css/style.css?v=23" />
+  <link rel="stylesheet" href="css/style.css?v=24" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/qrcode.min.js"></script>
   <script src="js/supabase-config.js"></script>
@@ -20,10 +20,14 @@
         <span class="brand-name">Live QA</span>
       </div>
       <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <button class="lang-toggle" id="langToggle" type="button" data-lang-toggle aria-label="Switch language">
+          <span class="lang-icon" aria-hidden="true">🌐</span>
+          <span class="lang-label" data-lang-toggle-label>中文</span>
+        </button>
         <div class="room-badge">
-          Code <span class="code" id="roomCodeDisplay">------</span>
+          <span data-i18n="common.code">Code</span> <span class="code" id="roomCodeDisplay">------</span>
         </div>
-        <span class="status-pill online"><span class="dot"></span><span id="studentCount">0</span> students online</span>
+        <span class="status-pill online"><span class="dot"></span><span id="studentCount">0</span> <span data-i18n="common.studentsOnline">students online</span></span>
       </div>
     </header>
 
@@ -33,36 +37,37 @@
         <div>
           <!-- Question composer -->
           <div class="question-composer">
-            <div class="composer-label">Post a New Question</div>
+            <div class="composer-label" data-i18n="teacher.postQuestion">Post a New Question</div>
             <div class="question-textarea-wrap">
               <textarea
                 class="question-textarea"
                 id="questionInput"
                 placeholder="Type your question here, e.g. What is the capital of France?"
+                data-i18n-ph="teacher.questionPlaceholder"
                 rows="3"
               ></textarea>
-              <label class="add-file-btn question-add-file-btn" title="Attach file (image, PDF, etc.)">
+              <label class="add-file-btn question-add-file-btn" title="Attach file (image, PDF, etc.)" data-i18n-title="teacher.attachFile">
                 <input type="file" id="questionFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.svg,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar" hidden />
                 <span class="add-file-icon" aria-hidden="true">+</span>
               </label>
               <span class="file-picker-name question-file-name" hidden></span>
             </div>
             <div class="composer-actions">
-              <span style="color:var(--muted); font-size:0.9rem;">Students can answer all questions using the same room code</span>
-              <button class="btn btn-primary" id="postQuestionBtn">Post Question</button>
+              <span style="color:var(--muted); font-size:0.9rem;" data-i18n="teacher.sameRoomHint">Students can answer all questions using the same room code</span>
+              <button class="btn btn-primary" id="postQuestionBtn" data-i18n="teacher.postBtn">Post Question</button>
             </div>
           </div>
 
           <!-- Questions list -->
           <section class="questions-section">
             <h3 class="section-title">
-              All Questions
+              <span data-i18n="common.allQuestions">All Questions</span>
               <span class="count" id="questionCount">0</span>
             </h3>
             <div class="questions-list" id="questionsList">
               <div class="empty-state" id="emptyState">
                 <div class="icon">&#128221;</div>
-                <div class="msg">No questions yet. Post your first question above to get started.</div>
+                <div class="msg" data-i18n="teacher.empty">No questions yet. Post your first question above to get started.</div>
               </div>
             </div>
           </section>
@@ -71,27 +76,27 @@
         <!-- Right: stats panel -->
         <aside class="stats-panel">
           <div class="stat-item">
-            <span class="stat-label">Online Students</span>
+            <span class="stat-label" data-i18n="teacher.onlineStudents">Online Students</span>
             <span class="stat-value teal" id="statStudents">0</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Questions</span>
+            <span class="stat-label" data-i18n="teacher.questions">Questions</span>
             <span class="stat-value amber" id="statQuestions">0</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Total Answers</span>
+            <span class="stat-label" data-i18n="teacher.totalAnswers">Total Answers</span>
             <span class="stat-value coral" id="statAnswers">0</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">Room Code</span>
+            <span class="stat-label" data-i18n="teacher.roomCode">Room Code</span>
             <span class="stat-value" id="statRoomCode">------</span>
           </div>
-          <button class="btn btn-amber export-btn" id="showResponsesBtn">Show Responses</button>
-          <button class="btn btn-teal export-btn" id="exportBtn">Export Q&A (CSV)</button>
+          <button class="btn btn-amber export-btn" id="showResponsesBtn" data-i18n="teacher.showResponses">Show Responses</button>
+          <button class="btn btn-teal export-btn" id="exportBtn" data-i18n="teacher.exportCsv">Export Q&amp;A (CSV)</button>
           <div class="qr-section">
-            <div class="qr-label">Scan to Join</div>
+            <div class="qr-label" data-i18n="teacher.scanToJoin">Scan to Join</div>
             <div id="qrCanvas"></div>
-            <div class="qr-hint">Students scan with phone camera</div>
+            <div class="qr-hint" data-i18n="teacher.qrHint">Students scan with phone camera</div>
           </div>
         </aside>
       </div>
@@ -110,16 +115,17 @@
         <div class="rv-answers" id="rvAnswers"></div>
       </div>
       <div class="rv-footer">
-        <button class="btn btn-ghost" id="rvPrevBtn">&larr; Previous</button>
+        <button class="btn btn-ghost" id="rvPrevBtn">&larr; <span data-i18n="rv.previous">Previous</span></button>
         <span class="rv-answer-count" id="rvAnswerCount">0 answers</span>
-        <button class="btn btn-primary" id="rvNextBtn">Next &rarr;</button>
+        <button class="btn btn-primary" id="rvNextBtn"><span data-i18n="rv.next">Next</span> &rarr;</button>
       </div>
     </div>
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="js/response-viewer.js"></script>
-  <script src="js/app.js?v=20"></script>
+  <script src="js/i18n.js?v=1"></script>
+  <script src="js/response-viewer.js?v=1"></script>
+  <script src="js/app.js?v=21"></script>
   <script>LiveQA.initTeacher();</script>
 </body>
 </html>

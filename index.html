@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Live Classroom Q&amp;A</title>
-  <link rel="stylesheet" href="css/style.css?v=23" />
+  <link rel="stylesheet" href="css/style.css?v=24" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-config.js"></script>
 </head>
@@ -12,32 +12,39 @@
   <div class="orb orb-1" aria-hidden="true"></div>
   <div class="orb orb-2" aria-hidden="true"></div>
   <div class="orb orb-3" aria-hidden="true"></div>
+
+  <button class="lang-toggle" id="langToggle" type="button" data-lang-toggle aria-label="Switch language">
+    <span class="lang-icon" aria-hidden="true">🌐</span>
+    <span class="lang-label" data-lang-toggle-label>中文</span>
+  </button>
+
   <main class="entry-wrap">
     <header class="entry-header">
-      <span class="entry-eyebrow">Live Classroom Q&amp;A</span>
-      <h1 class="entry-title">Make Every Answer<br />Seen Instantly</h1>
-      <p class="entry-subtitle">Teachers post questions, students respond simultaneously, and every answer appears in real time — for a highly interactive classroom experience.</p>
+      <span class="entry-eyebrow" data-i18n="entry.eyebrow">Live Classroom Q&amp;A</span>
+      <h1 class="entry-title" data-i18n-html="entry.title">Make Every Answer<br />Seen Instantly</h1>
+      <p class="entry-subtitle" data-i18n="entry.subtitle">Teachers post questions, students respond simultaneously, and every answer appears in real time — for a highly interactive classroom experience.</p>
     </header>
 
     <section class="role-cards">
       <!-- Teacher card -->
       <div class="role-card teacher" id="teacherCard">
         <div class="role-icon">&#127891;</div>
-        <h2 class="role-title">I'm a Teacher</h2>
-        <p class="role-desc">Create a classroom, post questions, and receive student answers in real time.</p>
-        <button class="btn btn-teal" id="createRoomBtn">Create Classroom</button>
+        <h2 class="role-title" data-i18n="role.teacher">I'm a Teacher</h2>
+        <p class="role-desc" data-i18n="role.teacher.desc">Create a classroom, post questions, and receive student answers in real time.</p>
+        <button class="btn btn-teal" id="createRoomBtn" data-i18n="role.teacher.btn">Create Classroom</button>
         <div class="teacher-rejoin">
-          <span class="rejoin-divider">or rejoin an existing classroom</span>
+          <span class="rejoin-divider" data-i18n="role.teacher.rejoin.divider">or rejoin an existing classroom</span>
           <div class="input-row">
             <input
               type="text"
               class="input-field room-code-input"
               id="teacherRoomCodeInput"
               placeholder="Enter classroom code"
+              data-i18n-ph="placeholder.enterClassroomCode"
               maxlength="6"
               autocomplete="off"
             />
-            <button class="btn btn-outline" id="rejoinRoomBtn">Rejoin</button>
+            <button class="btn btn-outline" id="rejoinRoomBtn" data-i18n="role.teacher.rejoin.btn">Rejoin</button>
           </div>
         </div>
       </div>
@@ -45,8 +52,8 @@
       <!-- Student card -->
       <div class="role-card student">
         <div class="role-icon">&#9997;</div>
-        <h2 class="role-title">I'm a Student</h2>
-        <p class="role-desc">Enter a classroom code to join and answer your teacher's questions in real time.</p>
+        <h2 class="role-title" data-i18n="role.student">I'm a Student</h2>
+        <p class="role-desc" data-i18n="role.student.desc">Enter a classroom code to join and answer your teacher's questions in real time.</p>
         <div class="join-form">
           <div class="input-row">
             <input
@@ -54,6 +61,7 @@
               class="input-field room-code-input"
               id="roomCodeInput"
               placeholder="Classroom Code"
+              data-i18n-ph="placeholder.classroomCode"
               maxlength="6"
               autocomplete="off"
             />
@@ -64,18 +72,20 @@
               class="input-field"
               id="studentNameInput"
               placeholder="Your name (optional)"
+              data-i18n-ph="placeholder.studentName"
               maxlength="20"
               autocomplete="off"
             />
           </div>
-          <button class="btn btn-primary" id="joinRoomBtn">Join Classroom</button>
+          <button class="btn btn-primary" id="joinRoomBtn" data-i18n="role.student.btn">Join Classroom</button>
         </div>
       </div>
     </section>
   </main>
 
   <div class="toast" id="toast"></div>
-  <script src="js/app.js?v=20"></script>
+  <script src="js/i18n.js?v=1"></script>
+  <script src="js/app.js?v=21"></script>
   <script>LiveQA.initEntry();</script>
 </body>
 </html>
