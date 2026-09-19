@@ -274,6 +274,7 @@ h1, h2, h3, h4 {
 
 .entry-wrap {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -493,6 +494,7 @@ h1, h2, h3, h4 {
 
 .app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -1441,6 +1443,26 @@ h1, h2, h3, h4 {
    Responsive
    ============================================ */
 
+/* Tablets — narrower sidebar, calmer title scale */
+@media (max-width: 1024px) {
+  .teacher-grid {
+    grid-template-columns: 1fr 280px;
+    gap: 20px;
+  }
+
+  .stats-panel {
+    top: 88px;
+  }
+
+  .entry-title {
+    font-size: clamp(2.2rem, 7vw, 3.4rem);
+  }
+
+  .rv-q-text {
+    font-size: 1.6rem;
+  }
+}
+
 @media (max-width: 768px) {
   /* Header */
   .app-header {
@@ -1642,6 +1664,60 @@ h1, h2, h3, h4 {
   .toast.show {
     transform: translateY(0);
   }
+
+  /* Orbs: lighter blur/opacity for smoother mobile scrolling */
+  .orb {
+    filter: blur(50px);
+    opacity: 0.4;
+  }
+
+  /* Entry page: keep content clear of the floating language toggle */
+  .entry-wrap {
+    padding-top: 76px;
+  }
+
+  /* Comfortable touch targets (44px guideline) */
+  .reaction-btn {
+    padding: 8px 14px;
+    font-size: 0.9rem;
+  }
+
+  .add-file-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .answer-input-wrap .answer-input {
+    padding-left: 50px;
+  }
+
+  /* >=16px prevents iOS Safari auto-zoom on focus */
+  .comment-input {
+    font-size: 1rem;
+    padding: 10px 14px;
+  }
+
+  .comment-send-btn {
+    padding: 10px 18px !important;
+    font-size: 0.9rem !important;
+  }
+
+  /* Stats: two columns to save vertical space */
+  .stats-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 20px;
+    align-content: start;
+  }
+
+  .export-btn,
+  .qr-section {
+    grid-column: 1 / -1;
+  }
+
+  .question-card .question-actions .btn {
+    min-height: 40px;
+  }
 }
 
 /* Extra small phones */
@@ -1671,6 +1747,28 @@ h1, h2, h3, h4 {
 
   .section-title {
     font-size: 1.2rem;
+  }
+
+  .app-main {
+    padding: 14px 12px;
+  }
+
+  .entry-wrap {
+    padding: 68px 14px 32px;
+  }
+
+  .question-composer {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .question-card,
+  .role-card {
+    border-radius: 20px;
+  }
+
+  .answer-input-bar {
+    padding: 12px;
   }
 }
 
@@ -1814,13 +1912,106 @@ h1, h2, h3, h4 {
 }
 
 @media (max-width: 640px) {
+  /* Full-screen presentation on phones */
+  .rv-overlay {
+    padding: 0;
+  }
+
+  .rv-modal {
+    max-width: none;
+    max-height: 100vh;
+    max-height: 100dvh;
+    height: 100%;
+    border-radius: 0;
+    border: none;
+  }
+
+  .rv-header {
+    padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+
+  .rv-page-indicator {
+    font-size: 0.95rem;
+  }
+
+  .rv-close {
+    font-size: 2.4rem;
+    padding: 0 10px;
+  }
+
   .rv-q-text {
     font-size: 1.3rem;
   }
+
   .rv-body {
-    padding: 20px;
+    padding: 20px 16px;
   }
+
+  .rv-answers {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
   .rv-footer {
     padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .rv-footer .btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
+  }
+}
+
+/* ============================================
+   Touch Devices & Motion Preferences
+   ============================================ */
+
+/* Landscape phones: tighter vertical rhythm */
+@media (max-height: 480px) and (orientation: landscape) {
+  .entry-header {
+    margin-bottom: 20px;
+  }
+
+  .entry-title {
+    font-size: clamp(1.8rem, 6vh, 2.6rem);
+  }
+
+  .entry-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .app-header {
+    padding: 10px 20px;
+  }
+
+  .role-card {
+    padding: 20px 24px;
+  }
+}
+
+/* Avoid sticky hover states on touch devices */
+@media (hover: none) {
+  .role-card:hover,
+  .answer-card:hover,
+  .lang-toggle:hover {
+    transform: none;
+  }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  .orb {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
