@@ -521,6 +521,13 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+a.brand:hover .brand-logo {
+  transform: scale(1.08) rotate(-4deg);
 }
 
 .brand-logo {
@@ -535,6 +542,7 @@ h1, h2, h3, h4 {
   font-weight: 800;
   font-family: var(--font-display);
   box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);
+  transition: transform 0.25s var(--ease);
 }
 
 .brand-name {

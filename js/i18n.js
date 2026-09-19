@@ -35,6 +35,7 @@
       // Common
       'common.code': 'Code',
       'common.connected': 'Connected',
+      'common.backToHome': 'Back to home',
       'common.studentsOnline': 'students online',
       'common.allQuestions': 'All Questions',
       'common.anonymous': 'Anonymous',
@@ -132,6 +133,7 @@
 
       'common.code': '课堂码',
       'common.connected': '已连接',
+      'common.backToHome': '返回首页',
       'common.studentsOnline': '位学生在线',
       'common.allQuestions': '全部问题',
       'common.anonymous': '匿名',
