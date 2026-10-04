@@ -317,6 +317,10 @@ const LiveQA = (function () {
     const answersWallClass = isStudent ? 'student-answers-wall' : 'answers-wall';
     const answersTitle = isStudent ? i18n.t('student.classmatesAnswers') : i18n.t('student.answersTitle');
 
+    // Normalize question type (backward compat: old rows may be null)
+    const qType = q.question_type || 'open';
+    const qTypeLabel = i18n.t('qtype.' + qType) || qType;
+
     // Teacher action buttons (Delete only)
     let actionsHtml = '';
     if (!isStudent) {
@@ -344,26 +348,80 @@ const LiveQA = (function () {
 
     const textHtml = q.question_text ? '<div class="question-card-text">' + escapeHtml(q.question_text) + '</div>' : '';
 
-    card.innerHTML =
-      '<div class="question-card-header">' +
-        '<span class="question-number">Q' + index + '</span>' +
-        '<span class="question-time">' + formatTime(q.created_at) + '</span>' +
-        actionsHtml +
-      '</div>' +
-      textHtml +
-      fileHtml +
-      (isStudent ?
-        '<div class="answer-input-bar">' +
-          '<div class="answer-input-wrap">' +
+    // MCQ options display
+    let optionsHtml = '';
+    if (qType === 'mcq' && Array.isArray(q.options) && q.options.length) {
+      optionsHtml = '<div class="mcq-options">';
+      q.options.forEach((opt, i) => {
+        const letter = String.fromCharCode(65 + i);
+        optionsHtml +=
+          '<div class="mcq-option-display">' +
+            '<span class="mcq-letter">' + letter + '</span>' +
+            '<span class="mcq-option-text">' + escapeHtml(opt) + '</span>' +
+          '</div>';
+      });
+      optionsHtml += '</div>';
+    }
+
+    // Question type badge
+    const typeBadgeHtml = '<span class="qtype-badge qtype-' + qType + '">' + qTypeLabel + '</span>';
+
+    // Student answer input bar depends on question type
+    let answerInputHtml = '';
+    if (isStudent) {
+      if (qType === 'mcq') {
+        answerInputHtml = '<div class="answer-input-bar mcq-answer-bar">' +
+          '<div class="mcq-student-options">';
+        q.options.forEach((opt, i) => {
+          const letter = String.fromCharCode(65 + i);
+          answerInputHtml +=
+            '<label class="mcq-student-option">' +
+              '<input type="radio" name="mcq-answer-' + q.id + '" class="mcq-answer-radio" value="' + escapeHtml(opt) + '" data-index="' + i + '" />' +
+              '<span class="mcq-letter">' + letter + '</span>' +
+              '<span class="mcq-option-text">' + escapeHtml(opt) + '</span>' +
+            '</label>';
+        });
+        answerInputHtml += '</div>' +
+          '<div class="answer-input-row">' +
             '<label class="add-file-btn" title="' + i18n.t('student.answerAttach') + '">' +
               '<input type="file" class="answer-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar" hidden />' +
               '<span class="add-file-icon" aria-hidden="true">+</span>' +
             '</label>' +
-            '<input type="text" class="input-field answer-input" placeholder="' + i18n.t('student.answerPlaceholder') + '" autocomplete="off" />' +
+            '<span class="file-picker-name" hidden></span>' +
+            '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
           '</div>' +
-          '<span class="file-picker-name" hidden></span>' +
-          '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
-        '</div>' : '') +
+        '</div>';
+      } else {
+        // open & fill use a text input (fill expected answer is hidden from students)
+        const ph = qType === 'fill'
+          ? (i18n.t('student.fillPlaceholder') || 'Type your answer…')
+          : i18n.t('student.answerPlaceholder');
+        answerInputHtml =
+          '<div class="answer-input-bar">' +
+            '<div class="answer-input-wrap">' +
+              '<label class="add-file-btn" title="' + i18n.t('student.answerAttach') + '">' +
+                '<input type="file" class="answer-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar" hidden />' +
+                '<span class="add-file-icon" aria-hidden="true">+</span>' +
+              '</label>' +
+              '<input type="text" class="input-field answer-input" placeholder="' + ph + '" autocomplete="off" />' +
+            '</div>' +
+            '<span class="file-picker-name" hidden></span>' +
+            '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
+          '</div>';
+      }
+    }
+
+    card.innerHTML =
+      '<div class="question-card-header">' +
+        '<span class="question-number">Q' + index + '</span>' +
+        typeBadgeHtml +
+        '<span class="question-time">' + formatTime(q.created_at) + '</span>' +
+        actionsHtml +
+      '</div>' +
+      textHtml +
+      optionsHtml +
+      fileHtml +
+      answerInputHtml +
       '<div class="answers-section">' +
         '<h4 class="section-title small">' + answersTitle + ' <span class="count answer-count">0</span></h4>' +
         '<div class="' + answersWallClass + ' answers-wall-inner"></div>' +
@@ -473,7 +531,73 @@ const LiveQA = (function () {
     const postBtn = document.getElementById('postQuestionBtn');
     const questionFileInput = document.getElementById('questionFileInput');
     const questionFileNameLabel = document.querySelector('.question-file-name');
+    const qtypeRadios = document.querySelectorAll('input[name="qtype"]');
+    const mcqEditor = document.getElementById('mcqOptionsEditor');
+    const mcqList = document.getElementById('mcqOptionsList');
+    const addOptionBtn = document.getElementById('addOptionBtn');
+    const fillEditor = document.getElementById('fillAnswerEditor');
+    const fillExpectedAnswer = document.getElementById('fillExpectedAnswer');
     const exportBtn = document.getElementById('exportBtn');
+
+    // ---------- Question type composer helpers ----------
+    function getQuestionType() {
+      const checked = document.querySelector('input[name="qtype"]:checked');
+      return checked ? checked.value : 'open';
+    }
+
+    function applyQuestionTypeUI(type) {
+      if (mcqEditor) mcqEditor.hidden = (type !== 'mcq');
+      if (fillEditor) fillEditor.hidden = (type !== 'fill');
+      document.querySelectorAll('.qtype-label').forEach((lbl) => {
+        lbl.classList.toggle('active', lbl.dataset.qtype === type);
+      });
+    }
+
+    function addMcqOptionRow(text, isCorrect) {
+      if (!mcqList) return;
+      const row = document.createElement('div');
+      row.className = 'mcq-option-row';
+      row.innerHTML =
+        '<input type="radio" name="mcq-correct" class="mcq-correct-radio" title="Mark as correct answer" ' + (isCorrect ? 'checked' : '') + ' />' +
+        '<input type="text" class="input-field mcq-option-text" placeholder="' + (i18n.t('teacher.optionPlaceholder') || 'Option text') + '" value="' + escapeHtml(text || '') + '" />' +
+        '<button type="button" class="btn btn-ghost btn-sm btn-danger remove-option-btn" title="Remove">&times;</button>';
+      mcqList.appendChild(row);
+      row.querySelector('.remove-option-btn').addEventListener('click', () => {
+        row.remove();
+        // Ensure at least one correct radio remains checked
+        if (!mcqList.querySelector('.mcq-correct-radio:checked')) {
+          const first = mcqList.querySelector('.mcq-correct-radio');
+          if (first) first.checked = true;
+        }
+      });
+    }
+
+    function resetMcqOptions() {
+      if (!mcqList) return;
+      mcqList.innerHTML = '';
+      addMcqOptionRow('', true);
+      addMcqOptionRow('', false);
+    }
+
+    function getMcqOptions() {
+      if (!mcqList) return { options: [], correctIndex: 0 };
+      const rows = mcqList.querySelectorAll('.mcq-option-row');
+      const options = [];
+      let correctIndex = 0;
+      rows.forEach((row, i) => {
+        const txt = row.querySelector('.mcq-option-text').value.trim();
+        const correct = row.querySelector('.mcq-correct-radio').checked;
+        if (txt) options.push(txt);
+        if (correct) correctIndex = options.length - 1;
+      });
+      return { options, correctIndex };
+    }
+
+    if (qtypeRadios) {
+      qtypeRadios.forEach((r) => r.addEventListener('change', () => applyQuestionTypeUI(r.value)));
+    }
+    if (addOptionBtn) addOptionBtn.addEventListener('click', () => addMcqOptionRow('', false));
+    resetMcqOptions();
     const questionsList = document.getElementById('questionsList');
     const emptyState = document.getElementById('emptyState');
     const questionCountEl = document.getElementById('questionCount');
@@ -687,10 +811,32 @@ const LiveQA = (function () {
     postBtn.addEventListener('click', async () => {
       const q = questionInput.value.trim();
       const file = questionFileInput.files[0];
+      const qType = getQuestionType();
       if (!q && !file) {
         toast(i18n.t('toast.questionRequired'), 'error');
         return;
       }
+
+      let options = null;
+      let correctAnswer = null;
+
+      if (qType === 'mcq') {
+        const { options: opts, correctIndex } = getMcqOptions();
+        if (opts.length < 2) {
+          toast(i18n.t('toast.mcqNeedTwoOptions') || 'Please add at least 2 options', 'error');
+          return;
+        }
+        options = opts;
+        correctAnswer = String(correctIndex);
+      } else if (qType === 'fill') {
+        const expected = (fillExpectedAnswer && fillExpectedAnswer.value.trim()) || '';
+        if (!expected) {
+          toast(i18n.t('toast.fillNeedAnswer') || 'Please enter the expected answer', 'error');
+          return;
+        }
+        correctAnswer = expected;
+      }
+
       try {
         let fileUrl = null;
         let fileName = null;
@@ -708,16 +854,26 @@ const LiveQA = (function () {
           fileName = file.name;
         }
 
-        await sb.from('questions').insert({
+        const payload = {
           room_id: room,
           question_text: q,
+          question_type: qType,
           file_url: fileUrl,
           file_name: fileName,
-        });
+        };
+        if (options) payload.options = options;
+        if (correctAnswer !== null) payload.correct_answer = correctAnswer;
+
+        await sb.from('questions').insert(payload);
         questionInput.value = '';
         questionFileInput.value = '';
         questionFileNameLabel.textContent = '';
         questionFileNameLabel.hidden = true;
+        if (fillExpectedAnswer) fillExpectedAnswer.value = '';
+        resetMcqOptions();
+        // Reset to open type for the next question
+        const openRadio = document.querySelector('input[name="qtype"][value="open"]');
+        if (openRadio) { openRadio.checked = true; applyQuestionTypeUI('open'); }
       } catch (err) {
         console.error(err);
         toast(i18n.t('toast.postFailed'), 'error');
@@ -765,17 +921,19 @@ const LiveQA = (function () {
           return;
         }
 
-        const rows = [['Question', 'Question File Name', 'Question File URL', 'Student', 'Answer', 'File Name', 'File URL', 'Time']];
+        const rows = [['Question', 'Type', 'Options', 'Student', 'Answer', 'File Name', 'File URL', 'Time']];
         questions.forEach((q) => {
           const qAnswers = (answers || []).filter((a) => a.question_id === q.id);
+          const qType = q.question_type || 'open';
+          const opts = (qType === 'mcq' && Array.isArray(q.options)) ? q.options.join(' | ') : '';
           if (qAnswers.length === 0) {
-            rows.push([q.question_text || '', q.file_name || '', q.file_url || '', '', '', '', '', '']);
+            rows.push([q.question_text || '', qType, opts, '', '', '', '', '']);
           } else {
             qAnswers.forEach((a) => {
               rows.push([
                 q.question_text || '',
-                q.file_name || '',
-                q.file_url || '',
+                qType,
+                opts,
                 a.student_name || i18n.t('common.anonymous'),
                 a.answer || '',
                 a.file_name || '',
@@ -843,10 +1001,28 @@ const LiveQA = (function () {
       if (!page) return;
       const { question, answers } = page;
 
+      const rvQType = question.question_type || 'open';
+      const rvTypeLabel = i18n.t('qtype.' + rvQType) || rvQType;
+      let rvOptionsHtml = '';
+      if (rvQType === 'mcq' && Array.isArray(question.options) && question.options.length) {
+        rvOptionsHtml = '<div class="mcq-options">';
+        question.options.forEach((opt, i) => {
+          rvOptionsHtml +=
+            '<div class="mcq-option-display">' +
+              '<span class="mcq-letter">' + String.fromCharCode(65 + i) + '</span>' +
+              '<span class="mcq-option-text">' + escapeHtml(opt) + '</span>' +
+            '</div>';
+        });
+        rvOptionsHtml += '</div>';
+      }
       rvQuestion.innerHTML =
-        '<div class="rv-q-number">Q' + (rvIndex + 1) + '</div>' +
+        '<div class="rv-q-header">' +
+          '<span class="rv-q-number">Q' + (rvIndex + 1) + '</span>' +
+          '<span class="qtype-badge qtype-' + rvQType + '">' + rvTypeLabel + '</span>' +
+          '<span class="rv-q-time">' + formatTime(question.created_at) + '</span>' +
+        '</div>' +
         '<div class="rv-q-text">' + escapeHtml(question.question_text) + '</div>' +
-        '<div class="rv-q-time">' + formatTime(question.created_at) + '</div>';
+        rvOptionsHtml;
 
       rvAnswers.innerHTML = '';
       if (answers.length === 0) {
@@ -1040,10 +1216,12 @@ const LiveQA = (function () {
 
       // Wire up the answer submit for this question
       const input = card.querySelector('.answer-input');
+      const mcqRadios = card.querySelectorAll('.mcq-answer-radio');
       const btn = card.querySelector('.submit-answer-btn');
       const fileInput = card.querySelector('.answer-file-input');
       const fileNameLabel = card.querySelector('.file-picker-name');
       const qid = card.dataset.questionId;
+      const qType = q.question_type || 'open';
 
       fileInput.addEventListener('change', () => {
         const f = fileInput.files[0];
@@ -1058,8 +1236,16 @@ const LiveQA = (function () {
         }
       });
 
+      function getStudentAnswerText() {
+        if (qType === 'mcq') {
+          const checked = card.querySelector('.mcq-answer-radio:checked');
+          return checked ? checked.value : '';
+        }
+        return input ? input.value.trim() : '';
+      }
+
       async function submitAnswer() {
-        const text = input.value.trim();
+        const text = getStudentAnswerText();
         const file = fileInput.files[0];
 
         if (!text && !file) {
@@ -1095,7 +1281,8 @@ const LiveQA = (function () {
             file_name: fileName,
           });
 
-          input.value = '';
+          if (input) input.value = '';
+          mcqRadios.forEach((r) => { r.checked = false; });
           fileInput.value = '';
           fileNameLabel.textContent = '';
           fileNameLabel.hidden = true;
@@ -1110,8 +1297,16 @@ const LiveQA = (function () {
       }
 
       btn.addEventListener('click', submitAnswer);
-      input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') submitAnswer();
+      if (input) {
+        input.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') submitAnswer();
+        });
+      }
+      // MCQ: pressing Enter on a selected option submits
+      mcqRadios.forEach((r) => {
+        r.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') submitAnswer();
+        });
       });
 
       updateQuestionCount();

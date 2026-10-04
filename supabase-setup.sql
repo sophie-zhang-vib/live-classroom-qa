@@ -11,10 +11,15 @@ create table if not exists public.rooms (
 );
 
 -- Questions table: multiple questions per room
+-- question_type: 'open' (open-ended), 'mcq' (multiple choice), 'fill' (fill-in-blank)
+-- options: jsonb array of option strings (used by mcq)
+-- correct_answer: for mcq -> index of correct option (as string); for fill -> expected answer text; for open -> optional model answer
 create table if not exists public.questions (
   id uuid primary key default gen_random_uuid(),
   room_id text not null references public.rooms(room_id) on delete cascade,
   question_text text not null,
+  question_type text not null default 'open' check (question_type in ('open', 'mcq', 'fill')),
+  options jsonb,
   correct_answer text,
   show_answer boolean not null default false,
   file_url text,

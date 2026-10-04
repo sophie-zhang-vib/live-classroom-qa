@@ -44,12 +44,22 @@
       'common.delete': 'Delete',
       'common.teacher': 'Teacher',
 
+      // Question types
+      'qtype.open': 'Open-ended',
+      'qtype.mcq': 'Multiple Choice',
+      'qtype.fill': 'Fill-in-blank',
+
       // Teacher dashboard
       'teacher.postQuestion': 'Post a New Question',
       'teacher.questionPlaceholder': 'Type your question here, e.g. What is the capital of France?',
       'teacher.attachFile': 'Attach file (image, PDF, etc.)',
       'teacher.sameRoomHint': 'Students can answer all questions using the same room code',
       'teacher.postBtn': 'Post Question',
+      'teacher.mcqOptions': 'Options (tick the correct one)',
+      'teacher.addOption': 'Add option',
+      'teacher.optionPlaceholder': 'Option text',
+      'teacher.expectedAnswer': 'Expected answer',
+      'teacher.expectedAnswerPh': 'e.g. Paris',
       'teacher.empty': 'No questions yet. Post your first question above to get started.',
       'teacher.onlineStudents': 'Online Students',
       'teacher.questions': 'Questions',
@@ -72,6 +82,7 @@
       // Student view
       'student.waiting': 'Waiting for teacher to post a question…',
       'student.answerPlaceholder': 'Type your answer…',
+      'student.fillPlaceholder': 'Type your answer…',
       'student.answerAttach': 'Attach file (Word, PDF, image, etc.)',
       'student.answersTitle': 'Answers',
       'student.classmatesAnswers': "Classmates' Answers",
@@ -110,6 +121,8 @@
       'toast.newQuestion': 'New question received!',
       'toast.submitting': 'Submitting…',
       'toast.questionRequired': 'Please enter a question or attach a file',
+      'toast.mcqNeedTwoOptions': 'Please add at least 2 options',
+      'toast.fillNeedAnswer': 'Please enter the expected answer',
       'toast.postFailed': 'Failed to post question'
     },
     zh: {
@@ -142,11 +155,21 @@
       'common.delete': '删除',
       'common.teacher': '老师',
 
+      // Question types
+      'qtype.open': '开放题',
+      'qtype.mcq': '选择题',
+      'qtype.fill': '填空题',
+
       'teacher.postQuestion': '发布新问题',
       'teacher.questionPlaceholder': '在此输入问题，例如：法国的首都是哪里？',
       'teacher.attachFile': '附加文件（图片、PDF 等）',
       'teacher.sameRoomHint': '学生可使用同一个课堂码回答所有问题',
       'teacher.postBtn': '发布问题',
+      'teacher.mcqOptions': '选项（勾选正确答案）',
+      'teacher.addOption': '添加选项',
+      'teacher.optionPlaceholder': '选项内容',
+      'teacher.expectedAnswer': '参考答案',
+      'teacher.expectedAnswerPh': '例如：巴黎',
       'teacher.empty': '暂无问题。在上方发布第一个问题即可开始。',
       'teacher.onlineStudents': '在线学生',
       'teacher.questions': '问题数',
@@ -167,6 +190,7 @@
 
       'student.waiting': '等待老师发布问题…',
       'student.answerPlaceholder': '输入你的回答…',
+      'student.fillPlaceholder': '输入你的答案…',
       'student.answerAttach': '附加文件（Word、PDF、图片等）',
       'student.answersTitle': '回答',
       'student.classmatesAnswers': '同学的回答',
@@ -202,6 +226,8 @@
       'toast.newQuestion': '收到新问题！',
       'toast.submitting': '提交中…',
       'toast.questionRequired': '请输入问题或附加文件',
+      'toast.mcqNeedTwoOptions': '请至少添加 2 个选项',
+      'toast.fillNeedAnswer': '请填写参考答案',
       'toast.postFailed': '发布问题失败'
     }
   };

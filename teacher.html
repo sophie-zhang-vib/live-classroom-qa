@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Teacher Dashboard · Live QA</title>
-  <link rel="stylesheet" href="css/style.css?v=26" />
+  <link rel="stylesheet" href="css/style.css?v=27" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/qrcode.min.js"></script>
   <script src="js/supabase-config.js"></script>
@@ -38,6 +38,23 @@
           <!-- Question composer -->
           <div class="question-composer">
             <div class="composer-label" data-i18n="teacher.postQuestion">Post a New Question</div>
+
+            <!-- Question type selector -->
+            <div class="question-type-selector" id="questionTypeSelector">
+              <label class="qtype-label active" data-qtype="open">
+                <input type="radio" name="qtype" value="open" checked />
+                <span class="qtype-name" data-i18n="qtype.open">Open-ended</span>
+              </label>
+              <label class="qtype-label" data-qtype="mcq">
+                <input type="radio" name="qtype" value="mcq" />
+                <span class="qtype-name" data-i18n="qtype.mcq">Multiple Choice</span>
+              </label>
+              <label class="qtype-label" data-qtype="fill">
+                <input type="radio" name="qtype" value="fill" />
+                <span class="qtype-name" data-i18n="qtype.fill">Fill-in-blank</span>
+              </label>
+            </div>
+
             <div class="question-textarea-wrap">
               <textarea
                 class="question-textarea"
@@ -52,6 +69,22 @@
               </label>
               <span class="file-picker-name question-file-name" hidden></span>
             </div>
+
+            <!-- MCQ options editor (shown only for mcq) -->
+            <div class="mcq-options-editor" id="mcqOptionsEditor" hidden>
+              <div class="mcq-options-header">
+                <span data-i18n="teacher.mcqOptions">Options (tick the correct one)</span>
+                <button type="button" class="btn btn-ghost btn-sm" id="addOptionBtn">+ <span data-i18n="teacher.addOption">Add option</span></button>
+              </div>
+              <div class="mcq-options-list" id="mcqOptionsList"></div>
+            </div>
+
+            <!-- Fill-in-blank expected answer (shown only for fill) -->
+            <div class="fill-answer-editor" id="fillAnswerEditor" hidden>
+              <label class="fill-answer-label" data-i18n="teacher.expectedAnswer">Expected answer</label>
+              <input type="text" id="fillExpectedAnswer" class="input-field" placeholder="e.g. Paris" data-i18n-ph="teacher.expectedAnswerPh" />
+            </div>
+
             <div class="composer-actions">
               <span style="color:var(--muted); font-size:0.9rem;" data-i18n="teacher.sameRoomHint">Students can answer all questions using the same room code</span>
               <button class="btn btn-primary" id="postQuestionBtn" data-i18n="teacher.postBtn">Post Question</button>
@@ -123,9 +156,9 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="js/i18n.js?v=1"></script>
+  <script src="js/i18n.js?v=2"></script>
   <script src="js/response-viewer.js?v=1"></script>
-  <script src="js/app.js?v=21"></script>
+  <script src="js/app.js?v=22"></script>
   <script>LiveQA.initTeacher();</script>
 </body>
 </html>
