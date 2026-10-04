@@ -391,11 +391,9 @@ const LiveQA = (function () {
             '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
           '</div>' +
         '</div>';
-      } else {
-        // open & fill use a text input (fill expected answer is hidden from students)
-        const ph = qType === 'fill'
-          ? (i18n.t('student.fillPlaceholder') || 'Type your answer…')
-          : i18n.t('student.answerPlaceholder');
+      } else if (qType === 'fill') {
+        // fill uses a single-line input (expected answer is hidden from students)
+        const ph = i18n.t('student.fillPlaceholder') || 'Type your answer…';
         answerInputHtml =
           '<div class="answer-input-bar">' +
             '<div class="answer-input-wrap">' +
@@ -404,6 +402,20 @@ const LiveQA = (function () {
                 '<span class="add-file-icon" aria-hidden="true">+</span>' +
               '</label>' +
               '<input type="text" class="input-field answer-input" placeholder="' + ph + '" autocomplete="off" />' +
+            '</div>' +
+            '<span class="file-picker-name" hidden></span>' +
+            '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
+          '</div>';
+      } else {
+        // open-ended: multi-line textarea, auto-grows, no word/length limit
+        answerInputHtml =
+          '<div class="answer-input-bar">' +
+            '<div class="answer-input-wrap">' +
+              '<label class="add-file-btn" title="' + i18n.t('student.answerAttach') + '">' +
+                '<input type="file" class="answer-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar" hidden />' +
+                '<span class="add-file-icon" aria-hidden="true">+</span>' +
+              '</label>' +
+              '<textarea class="input-field answer-input answer-textarea" rows="1" placeholder="' + i18n.t('student.answerPlaceholder') + '"></textarea>' +
             '</div>' +
             '<span class="file-picker-name" hidden></span>' +
             '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
@@ -1281,7 +1293,10 @@ const LiveQA = (function () {
             file_name: fileName,
           });
 
-          if (input) input.value = '';
+          if (input) {
+            input.value = '';
+            if (input.tagName === 'TEXTAREA') input.style.height = '';
+          }
           mcqRadios.forEach((r) => { r.checked = false; });
           fileInput.value = '';
           fileNameLabel.textContent = '';
@@ -1298,9 +1313,17 @@ const LiveQA = (function () {
 
       btn.addEventListener('click', submitAnswer);
       if (input) {
-        input.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') submitAnswer();
-        });
+        if (input.tagName === 'TEXTAREA') {
+          // Open-ended: auto-grow, no word limit; Enter adds a newline (submit via button)
+          input.addEventListener('input', () => {
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 320) + 'px';
+          });
+        } else {
+          input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') submitAnswer();
+          });
+        }
       }
       // MCQ: pressing Enter on a selected option submits
       mcqRadios.forEach((r) => {

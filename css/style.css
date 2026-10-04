@@ -1425,6 +1425,24 @@ a.brand:hover .brand-logo {
   padding-left: 44px;
 }
 
+/* ---------- Open-ended answers: multi-line textarea, no word limit ---------- */
+.answer-input-wrap .answer-textarea {
+  min-height: 58px;
+  max-height: 320px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  resize: none;
+  line-height: 1.55;
+  overflow-y: auto;
+}
+
+/* Align the "+" button to the top-left when the answer box is a textarea */
+.answer-input-wrap:has(.answer-textarea) .add-file-btn {
+  top: 14px;
+  bottom: auto;
+  margin: 0;
+}
+
 /* ---------- Add-file "+" button inside the input box ---------- */
 .add-file-btn {
   position: absolute;
