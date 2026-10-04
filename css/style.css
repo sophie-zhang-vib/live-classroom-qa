@@ -1434,19 +1434,17 @@ a.brand:hover .brand-logo {
 }
 
 /* ---------- Global submit bar (student: submit all answers at once) ---------- */
+/* Placed in normal flow right after the last question (no floating) */
 .submit-all-bar {
-  position: sticky;
-  bottom: 16px;
-  z-index: 5;
   display: flex;
   justify-content: center;
-  padding: 12px 0 4px;
+  padding: 18px 0 8px;
 }
 .submit-all-bar .submit-all-btn {
   min-width: 220px;
   padding: 14px 32px;
   font-size: 1.05rem;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
 }
 
 /* ---------- Add-file "+" button inside the input box ---------- */
