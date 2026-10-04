@@ -40,6 +40,9 @@
       'common.allQuestions': 'All Questions',
       'common.anonymous': 'Anonymous',
       'common.send': 'Send',
+      'common.edit': 'Edit',
+      'common.save': 'Save',
+      'common.cancel': 'Cancel',
       'common.delete': 'Delete',
       'common.teacher': 'Teacher',
 
@@ -50,6 +53,7 @@
 
       // Teacher dashboard
       'teacher.postQuestion': 'Post a New Question',
+      'teacher.editQuestion': 'Edit Question',
       'teacher.questionPlaceholder': 'Type your question here, e.g. What is the capital of France?',
       'teacher.attachFile': 'Attach file (image, PDF, etc.)',
       'teacher.sameRoomHint': 'Students can answer all questions using the same room code',
@@ -106,6 +110,8 @@
       'toast.reactionFailed': 'Failed to update reaction',
       'toast.commentFailed': 'Failed to post comment',
       'toast.questionPosted': 'Question posted',
+      'toast.questionUpdated': 'Question updated',
+      'toast.updateQuestionFailed': 'Failed to update question',
       'toast.questionDeleted': 'Question deleted',
       'toast.deleteQuestionFailed': 'Failed to delete question',
       'toast.deleteConfirm': 'Delete this question and all its answers?',
@@ -152,6 +158,9 @@
       'common.allQuestions': '全部问题',
       'common.anonymous': '匿名',
       'common.send': '发送',
+      'common.edit': '编辑',
+      'common.save': '保存',
+      'common.cancel': '取消',
       'common.delete': '删除',
       'common.teacher': '老师',
 
@@ -161,6 +170,7 @@
       'qtype.fill': '填空题',
 
       'teacher.postQuestion': '发布新问题',
+      'teacher.editQuestion': '编辑问题',
       'teacher.questionPlaceholder': '在此输入问题，例如：法国的首都是哪里？',
       'teacher.attachFile': '附加文件（图片、PDF 等）',
       'teacher.sameRoomHint': '学生可使用同一个课堂码回答所有问题',
@@ -212,6 +222,8 @@
       'toast.reactionFailed': '更新反应失败',
       'toast.commentFailed': '评论发送失败',
       'toast.questionPosted': '问题已发布',
+      'toast.questionUpdated': '问题已更新',
+      'toast.updateQuestionFailed': '更新问题失败',
       'toast.questionDeleted': '问题已删除',
       'toast.deleteQuestionFailed': '删除问题失败',
       'toast.deleteConfirm': '确定删除此问题及其所有回答吗？',

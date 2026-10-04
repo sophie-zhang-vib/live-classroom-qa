@@ -317,17 +317,19 @@ const LiveQA = (function () {
     card.className = 'question-card';
     card.dataset.questionId = q.id;
     card.dataset.questionType = qType;
+    card.dataset.questionIndex = index;
 
     const answersWallClass = isStudent ? 'student-answers-wall' : 'answers-wall';
     const answersTitle = isStudent ? i18n.t('student.classmatesAnswers') : i18n.t('student.answersTitle');
 
     const qTypeLabel = i18n.t('qtype.' + qType) || qType;
 
-    // Teacher action buttons (Delete only)
+    // Teacher action buttons (Edit / Delete)
     let actionsHtml = '';
     if (!isStudent) {
       actionsHtml =
         '<div class="question-actions">' +
+          '<button class="btn btn-ghost btn-sm edit-question-btn">' + i18n.t('common.edit') + '</button>' +
           '<button class="btn btn-ghost btn-sm btn-danger delete-question-btn">' + i18n.t('common.delete') + '</button>' +
         '</div>';
     }
@@ -703,6 +705,14 @@ const LiveQA = (function () {
       }, (payload) => {
         removeQuestionCard(payload.old.id);
       })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'questions',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        updateQuestionCard(payload.new);
+      })
       .subscribe();
 
     // Subscribe to new answers
@@ -880,11 +890,17 @@ const LiveQA = (function () {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) postBtn.click();
     });
 
-    // Event delegation: Delete question
+    // Event delegation: Edit question / Delete question
     questionsList.addEventListener('click', async (e) => {
+      const editBtn = e.target.closest('.edit-question-btn');
+      if (editBtn) {
+        const card = e.target.closest('.question-card');
+        if (card) openEditModal(card.dataset.questionId);
+        return;
+      }
+
       const deleteBtn = e.target.closest('.delete-question-btn');
       if (!deleteBtn) return;
-
       const card = e.target.closest('.question-card');
       if (!card) return;
       const qid = card.dataset.questionId;
@@ -898,6 +914,160 @@ const LiveQA = (function () {
         toast(i18n.t('toast.deleteQuestionFailed'), 'error');
       }
     });
+
+    // ---------- Edit question modal ----------
+    const editOverlay = document.getElementById('editOverlay');
+    const editCloseBtn = document.getElementById('editCloseBtn');
+    const editCancelBtn = document.getElementById('editCancelBtn');
+    const editSaveBtn = document.getElementById('editSaveBtn');
+    const editQuestionInput = document.getElementById('editQuestionInput');
+    const editMcqEditor = document.getElementById('editMcqEditor');
+    const editMcqList = document.getElementById('editMcqList');
+    const editAddOptionBtn = document.getElementById('editAddOptionBtn');
+    const editFillEditor = document.getElementById('editFillEditor');
+    const editFillAnswer = document.getElementById('editFillAnswer');
+
+    let editingQuestionId = null;
+    let editingQuestionType = 'open';
+
+    function editAddOptionRow(text, isCorrect) {
+      const row = document.createElement('div');
+      row.className = 'mcq-option-row';
+
+      // Built via DOM so option text can safely contain quotes
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'edit-mcq-correct';
+      radio.className = 'mcq-correct-radio';
+      radio.title = 'Mark as correct answer';
+      radio.checked = !!isCorrect;
+
+      const textInput = document.createElement('input');
+      textInput.type = 'text';
+      textInput.className = 'input-field mcq-option-text';
+      textInput.placeholder = i18n.t('teacher.optionPlaceholder') || 'Option text';
+      textInput.value = text || '';
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn btn-ghost btn-sm btn-danger remove-option-btn';
+      removeBtn.title = 'Remove';
+      removeBtn.textContent = '\u00d7';
+      removeBtn.addEventListener('click', () => {
+        row.remove();
+        if (!editMcqList.querySelector('.mcq-correct-radio:checked')) {
+          const first = editMcqList.querySelector('.mcq-correct-radio');
+          if (first) first.checked = true;
+        }
+      });
+
+      row.appendChild(radio);
+      row.appendChild(textInput);
+      row.appendChild(removeBtn);
+      editMcqList.appendChild(row);
+    }
+
+    async function openEditModal(qid) {
+      const { data: q, error } = await sb.from('questions').select('*').eq('id', qid).single();
+      if (error || !q) {
+        toast(i18n.t('toast.updateQuestionFailed'), 'error');
+        return;
+      }
+      editingQuestionId = q.id;
+      editingQuestionType = q.question_type || 'open';
+      editQuestionInput.value = q.question_text || '';
+      editFillAnswer.value = '';
+      editMcqList.innerHTML = '';
+      editMcqEditor.hidden = editingQuestionType !== 'mcq';
+      editFillEditor.hidden = editingQuestionType !== 'fill';
+
+      if (editingQuestionType === 'mcq') {
+        const opts = Array.isArray(q.options) ? q.options : [];
+        const correctIndex = parseInt(q.correct_answer, 10);
+        opts.forEach((opt, i) => editAddOptionRow(opt, i === correctIndex));
+        if (opts.length === 0) {
+          editAddOptionRow('', true);
+          editAddOptionRow('', false);
+        }
+      } else if (editingQuestionType === 'fill') {
+        editFillAnswer.value = q.correct_answer || '';
+      }
+
+      editOverlay.hidden = false;
+      editQuestionInput.focus();
+    }
+
+    function closeEditModal() {
+      editOverlay.hidden = true;
+      editingQuestionId = null;
+    }
+
+    editCloseBtn.addEventListener('click', closeEditModal);
+    editCancelBtn.addEventListener('click', closeEditModal);
+    editAddOptionBtn.addEventListener('click', () => editAddOptionRow('', false));
+
+    editSaveBtn.addEventListener('click', async () => {
+      if (!editingQuestionId) return;
+      const text = editQuestionInput.value.trim();
+      if (!text) {
+        toast(i18n.t('toast.questionRequired'), 'error');
+        return;
+      }
+
+      const updates = { question_text: text };
+      if (editingQuestionType === 'mcq') {
+        const rows = editMcqList.querySelectorAll('.mcq-option-row');
+        const opts = [];
+        let correctIndex = 0;
+        rows.forEach((row) => {
+          const txt = row.querySelector('.mcq-option-text').value.trim();
+          const correct = row.querySelector('.mcq-correct-radio').checked;
+          if (txt) opts.push(txt);
+          if (correct) correctIndex = opts.length - 1;
+        });
+        if (opts.length < 2) {
+          toast(i18n.t('toast.mcqNeedTwoOptions'), 'error');
+          return;
+        }
+        updates.options = opts;
+        updates.correct_answer = String(correctIndex);
+      } else if (editingQuestionType === 'fill') {
+        const expected = editFillAnswer.value.trim();
+        if (!expected) {
+          toast(i18n.t('toast.fillNeedAnswer'), 'error');
+          return;
+        }
+        updates.correct_answer = expected;
+      }
+
+      try {
+        const { error } = await sb.from('questions').update(updates).eq('id', editingQuestionId);
+        if (error) throw error;
+        closeEditModal();
+        toast(i18n.t('toast.questionUpdated'), 'success');
+      } catch (err) {
+        console.error(err);
+        toast(i18n.t('toast.updateQuestionFailed'), 'error');
+      }
+    });
+
+    // Re-render a question card in place (used by the realtime UPDATE handler)
+    function updateQuestionCard(q) {
+      const old = questionsList.querySelector('.question-card[data-question-id="' + q.id + '"]');
+      if (!old) return;
+      const idx = parseInt(old.dataset.questionIndex, 10) || 1;
+      const fresh = makeQuestionCard(q, idx, false);
+      // Preserve the already-rendered answer cards
+      const oldWall = old.querySelector('.answers-wall-inner');
+      const newWall = fresh.querySelector('.answers-wall-inner');
+      if (oldWall && newWall) {
+        while (oldWall.firstChild) newWall.appendChild(oldWall.firstChild);
+      }
+      old.replaceWith(fresh);
+      const countEl = fresh.querySelector('.answer-count');
+      if (countEl) countEl.textContent = fresh.querySelectorAll('.answer-card').length;
+      updateTotalAnswers();
+    }
 
     // Export all questions + answers as a CSV file
     exportBtn.addEventListener('click', async () => {
@@ -1211,8 +1381,16 @@ const LiveQA = (function () {
       questionIndex++;
       const card = makeQuestionCard(q, questionIndex, true);
       questionsList.insertBefore(card, questionsList.firstChild);
+      wireStudentCard(card);
 
-      // Wire up per-question inputs (submission itself is global, see submitAllAnswers)
+      // Reveal the global submit bar once there is at least one question
+      submitAllBar.hidden = false;
+
+      updateQuestionCount();
+    }
+
+    // Wire up per-question inputs (submission itself is global, see submitAllAnswers)
+    function wireStudentCard(card) {
       const input = card.querySelector('.answer-input');
       const fileInput = card.querySelector('.answer-file-input');
       const fileNameLabel = card.querySelector('.file-picker-name');
@@ -1239,11 +1417,18 @@ const LiveQA = (function () {
           input.style.height = Math.min(input.scrollHeight, 320) + 'px';
         });
       }
+    }
 
-      // Reveal the global submit bar once there is at least one question
+    // Re-render a question card in place when the teacher edits it
+    function updateQuestionCard(q) {
+      const old = questionsList.querySelector('.question-card[data-question-id="' + q.id + '"]');
+      if (!old) return;
+      const idx = parseInt(old.dataset.questionIndex, 10) || 1;
+      const fresh = makeQuestionCard(q, idx, true);
+      old.replaceWith(fresh);
+      wireStudentCard(fresh);
       submitAllBar.hidden = false;
-
-      updateQuestionCount();
+      renderAnswersForQuestion(q.id);
     }
 
     function removeQuestionCard(questionId) {
@@ -1394,6 +1579,14 @@ const LiveQA = (function () {
         filter: 'room_id=eq.' + room,
       }, (payload) => {
         removeQuestionCard(payload.old.id);
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'questions',
+        filter: 'room_id=eq.' + room,
+      }, (payload) => {
+        updateQuestionCard(payload.new);
       })
       .subscribe();
 
