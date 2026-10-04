@@ -310,15 +310,17 @@ const LiveQA = (function () {
   // ---------- Shared: create a question card ----------
   // isStudent: if true, includes answer input bar; else shows delete button
   function makeQuestionCard(q, index, isStudent) {
+    // Normalize question type (backward compat: old rows may be null)
+    const qType = q.question_type || 'open';
+
     const card = document.createElement('div');
     card.className = 'question-card';
     card.dataset.questionId = q.id;
+    card.dataset.questionType = qType;
 
     const answersWallClass = isStudent ? 'student-answers-wall' : 'answers-wall';
     const answersTitle = isStudent ? i18n.t('student.classmatesAnswers') : i18n.t('student.answersTitle');
 
-    // Normalize question type (backward compat: old rows may be null)
-    const qType = q.question_type || 'open';
     const qTypeLabel = i18n.t('qtype.' + qType) || qType;
 
     // Teacher action buttons (Delete only)
@@ -372,47 +374,37 @@ const LiveQA = (function () {
     // Question type badge
     const typeBadgeHtml = '<span class="qtype-badge qtype-' + qType + '">' + qTypeLabel + '</span>';
 
-    // Student answer input bar depends on question type
+    // Student answer input bar depends on question type.
+    // MCQ needs none: the options above are directly selectable, and submission
+    // happens once via the global "submit all answers" button at the page bottom.
     let answerInputHtml = '';
-    if (isStudent) {
-      if (qType === 'mcq') {
-        // Options above are directly selectable — the bar only needs the submit button
-        answerInputHtml =
-          '<div class="answer-input-bar mcq-answer-bar">' +
-            '<div class="answer-input-row">' +
-              '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
-            '</div>' +
-          '</div>';
-      } else if (qType === 'fill') {
-        // fill uses a single-line input (expected answer is hidden from students)
-        const ph = i18n.t('student.fillPlaceholder') || 'Type your answer…';
-        answerInputHtml =
-          '<div class="answer-input-bar">' +
-            '<div class="answer-input-wrap">' +
-              '<label class="add-file-btn" title="' + i18n.t('student.answerAttach') + '">' +
-                '<input type="file" class="answer-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar" hidden />' +
-                '<span class="add-file-icon" aria-hidden="true">+</span>' +
-              '</label>' +
-              '<input type="text" class="input-field answer-input" placeholder="' + ph + '" autocomplete="off" />' +
-            '</div>' +
-            '<span class="file-picker-name" hidden></span>' +
-            '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
-          '</div>';
-      } else {
-        // open-ended: multi-line textarea, auto-grows, no word/length limit
-        answerInputHtml =
-          '<div class="answer-input-bar">' +
-            '<div class="answer-input-wrap">' +
-              '<label class="add-file-btn" title="' + i18n.t('student.answerAttach') + '">' +
-                '<input type="file" class="answer-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar" hidden />' +
-                '<span class="add-file-icon" aria-hidden="true">+</span>' +
-              '</label>' +
-              '<textarea class="input-field answer-input answer-textarea" rows="1" placeholder="' + i18n.t('student.answerPlaceholder') + '"></textarea>' +
-            '</div>' +
-            '<span class="file-picker-name" hidden></span>' +
-            '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
-          '</div>';
-      }
+    if (isStudent && qType === 'fill') {
+      // fill uses a single-line input (expected answer is hidden from students)
+      const ph = i18n.t('student.fillPlaceholder') || 'Type your answer…';
+      answerInputHtml =
+        '<div class="answer-input-bar">' +
+          '<div class="answer-input-wrap">' +
+            '<label class="add-file-btn" title="' + i18n.t('student.answerAttach') + '">' +
+              '<input type="file" class="answer-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar" hidden />' +
+              '<span class="add-file-icon" aria-hidden="true">+</span>' +
+            '</label>' +
+            '<input type="text" class="input-field answer-input" placeholder="' + ph + '" autocomplete="off" />' +
+          '</div>' +
+          '<span class="file-picker-name" hidden></span>' +
+        '</div>';
+    } else if (isStudent) {
+      // open-ended: multi-line textarea, auto-grows, no word/length limit
+      answerInputHtml =
+        '<div class="answer-input-bar">' +
+          '<div class="answer-input-wrap">' +
+            '<label class="add-file-btn" title="' + i18n.t('student.answerAttach') + '">' +
+              '<input type="file" class="answer-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar" hidden />' +
+              '<span class="add-file-icon" aria-hidden="true">+</span>' +
+            '</label>' +
+            '<textarea class="input-field answer-input answer-textarea" rows="1" placeholder="' + i18n.t('student.answerPlaceholder') + '"></textarea>' +
+          '</div>' +
+          '<span class="file-picker-name" hidden></span>' +
+        '</div>';
     }
 
     card.innerHTML =
@@ -1149,6 +1141,8 @@ const LiveQA = (function () {
     const questionsList = document.getElementById('questionsList');
     const emptyState = document.getElementById('emptyState');
     const questionCountEl = document.getElementById('questionCount');
+    const submitAllBar = document.getElementById('submitAllBar');
+    const submitAllBtn = document.getElementById('submitAllBtn');
 
     let questionIndex = 0;
     let presenceChannel = null;
@@ -1218,14 +1212,10 @@ const LiveQA = (function () {
       const card = makeQuestionCard(q, questionIndex, true);
       questionsList.insertBefore(card, questionsList.firstChild);
 
-      // Wire up the answer submit for this question
+      // Wire up per-question inputs (submission itself is global, see submitAllAnswers)
       const input = card.querySelector('.answer-input');
-      const mcqRadios = card.querySelectorAll('.mcq-answer-radio');
-      const btn = card.querySelector('.submit-answer-btn');
       const fileInput = card.querySelector('.answer-file-input');
       const fileNameLabel = card.querySelector('.file-picker-name');
-      const qid = card.dataset.questionId;
-      const qType = q.question_type || 'open';
 
       if (fileInput) {
         fileInput.addEventListener('change', () => {
@@ -1242,91 +1232,16 @@ const LiveQA = (function () {
         });
       }
 
-      function getStudentAnswerText() {
-        if (qType === 'mcq') {
-          const checked = card.querySelector('.mcq-answer-radio:checked');
-          return checked ? checked.value : '';
-        }
-        return input ? input.value.trim() : '';
-      }
-
-      async function submitAnswer() {
-        const text = getStudentAnswerText();
-        const file = fileInput ? fileInput.files[0] : null;
-
-        if (!text && !file) {
-          toast(i18n.t('toast.answerRequired'), 'error');
-          return;
-        }
-
-        btn.disabled = true;
-        btn.textContent = i18n.t('toast.submitting');
-        try {
-          let fileUrl = null;
-          let fileName = null;
-
-          if (file) {
-            const fileExt = file.name.slice(file.name.lastIndexOf('.'));
-            const storagePath = room + '/' + qid + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + fileExt;
-            const { error: uploadErr } = await sb.storage
-              .from('answer-files')
-              .upload(storagePath, file, { upsert: false });
-            if (uploadErr) throw uploadErr;
-
-            const { data: urlData } = sb.storage.from('answer-files').getPublicUrl(storagePath);
-            fileUrl = urlData.publicUrl;
-            fileName = file.name;
-          }
-
-          await sb.from('answers').insert({
-            room_id: room,
-            question_id: qid,
-            answer: text,
-            student_name: name,
-            file_url: fileUrl,
-            file_name: fileName,
-          });
-
-          if (input) {
-            input.value = '';
-            if (input.tagName === 'TEXTAREA') input.style.height = '';
-          }
-          mcqRadios.forEach((r) => { r.checked = false; });
-          if (fileInput) fileInput.value = '';
-          if (fileNameLabel) {
-            fileNameLabel.textContent = '';
-            fileNameLabel.hidden = true;
-          }
-          toast(i18n.t('toast.answerSubmitted'), 'success');
-        } catch (err) {
-          console.error(err);
-          toast(i18n.t('toast.answerFailed'), 'error');
-        } finally {
-          btn.disabled = false;
-          btn.textContent = i18n.t('common.submit');
-        }
-      }
-
-      btn.addEventListener('click', submitAnswer);
-      if (input) {
-        if (input.tagName === 'TEXTAREA') {
-          // Open-ended: auto-grow, no word limit; Enter adds a newline (submit via button)
-          input.addEventListener('input', () => {
-            input.style.height = 'auto';
-            input.style.height = Math.min(input.scrollHeight, 320) + 'px';
-          });
-        } else {
-          input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') submitAnswer();
-          });
-        }
-      }
-      // MCQ: pressing Enter on a selected option submits
-      mcqRadios.forEach((r) => {
-        r.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') submitAnswer();
+      if (input && input.tagName === 'TEXTAREA') {
+        // Open-ended: auto-grow, no word limit; Enter adds a newline
+        input.addEventListener('input', () => {
+          input.style.height = 'auto';
+          input.style.height = Math.min(input.scrollHeight, 320) + 'px';
         });
-      });
+      }
+
+      // Reveal the global submit bar once there is at least one question
+      submitAllBar.hidden = false;
 
       updateQuestionCount();
     }
@@ -1336,9 +1251,98 @@ const LiveQA = (function () {
       if (card) card.remove();
       if (questionsList.querySelectorAll('.question-card').length === 0) {
         questionsList.appendChild(emptyState);
+        submitAllBar.hidden = true;
       }
       updateQuestionCount();
     }
+
+    // ---------- Global submission: answer everything, then submit once ----------
+    async function submitAllAnswers() {
+      // Collect every question card that has an answer text or a file
+      const pending = [];
+      questionsList.querySelectorAll('.question-card').forEach((card) => {
+        const qType = card.dataset.questionType || 'open';
+        let text = '';
+        if (qType === 'mcq') {
+          const checked = card.querySelector('.mcq-answer-radio:checked');
+          text = checked ? checked.value : '';
+        } else {
+          const input = card.querySelector('.answer-input');
+          text = input ? input.value.trim() : '';
+        }
+        const fileInput = card.querySelector('.answer-file-input');
+        const file = fileInput && fileInput.files[0] ? fileInput.files[0] : null;
+        if (!text && !file) return; // skip unanswered questions
+        pending.push({ card, text, file, fileInput, fileNameLabel: card.querySelector('.file-picker-name') });
+      });
+
+      if (pending.length === 0) {
+        toast(i18n.t('toast.nothingToSubmit'), 'error');
+        return;
+      }
+
+      submitAllBtn.disabled = true;
+      submitAllBtn.textContent = i18n.t('toast.submitting');
+
+      let okCount = 0;
+      let failCount = 0;
+      for (const item of pending) {
+        try {
+          let fileUrl = null;
+          let fileName = null;
+
+          if (item.file) {
+            const fileExt = item.file.name.slice(item.file.name.lastIndexOf('.'));
+            const storagePath = room + '/' + item.card.dataset.questionId + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + fileExt;
+            const { error: uploadErr } = await sb.storage
+              .from('answer-files')
+              .upload(storagePath, item.file, { upsert: false });
+            if (uploadErr) throw uploadErr;
+
+            const { data: urlData } = sb.storage.from('answer-files').getPublicUrl(storagePath);
+            fileUrl = urlData.publicUrl;
+            fileName = item.file.name;
+          }
+
+          const { error } = await sb.from('answers').insert({
+            room_id: room,
+            question_id: item.card.dataset.questionId,
+            answer: item.text,
+            student_name: name,
+            file_url: fileUrl,
+            file_name: fileName,
+          });
+          if (error) throw error;
+
+          okCount++;
+          // Clear this card's inputs so a re-submit won't duplicate them
+          const input = item.card.querySelector('.answer-input');
+          if (input) {
+            input.value = '';
+            if (input.tagName === 'TEXTAREA') input.style.height = '';
+          }
+          item.card.querySelectorAll('.mcq-answer-radio').forEach((r) => { r.checked = false; });
+          if (item.fileInput) item.fileInput.value = '';
+          if (item.fileNameLabel) {
+            item.fileNameLabel.textContent = '';
+            item.fileNameLabel.hidden = true;
+          }
+        } catch (err) {
+          console.error(err);
+          failCount++;
+        }
+      }
+
+      submitAllBtn.disabled = false;
+      submitAllBtn.textContent = i18n.t('student.submitAll');
+
+      if (failCount > 0) {
+        toast(i18n.t('toast.answerFailed'), 'error');
+      } else {
+        toast(i18n.t('toast.submittedCount', { n: okCount }), 'success');
+      }
+    }
+    submitAllBtn.addEventListener('click', submitAllAnswers);
 
     // Load existing questions + answers
     async function loadQuestions() {

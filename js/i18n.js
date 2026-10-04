@@ -40,7 +40,6 @@
       'common.allQuestions': 'All Questions',
       'common.anonymous': 'Anonymous',
       'common.send': 'Send',
-      'common.submit': 'Submit',
       'common.delete': 'Delete',
       'common.teacher': 'Teacher',
 
@@ -88,6 +87,7 @@
       'student.classmatesAnswers': "Classmates' Answers",
       'student.yourAnswer': 'Your Answer',
       'student.placeholder': 'Responses will be revealed by your teacher…',
+      'student.submitAll': 'Submit All Answers',
 
       // Answer card
       'answer.commentPlaceholder': 'Write a comment…',
@@ -115,7 +115,8 @@
       'toast.revealed': 'Responses revealed to students',
       'toast.hidden': 'Responses hidden from students',
       'toast.revealFailed': 'Failed to update response visibility',
-      'toast.answerRequired': 'Please enter an answer or attach a file',
+      'toast.nothingToSubmit': 'Please answer at least one question first',
+      'toast.submittedCount': 'Submitted {n} answer(s)',
       'toast.answerSubmitted': 'Answer submitted',
       'toast.answerFailed': 'Failed to submit answer',
       'toast.newQuestion': 'New question received!',
@@ -151,7 +152,6 @@
       'common.allQuestions': '全部问题',
       'common.anonymous': '匿名',
       'common.send': '发送',
-      'common.submit': '提交',
       'common.delete': '删除',
       'common.teacher': '老师',
 
@@ -196,6 +196,7 @@
       'student.classmatesAnswers': '同学的回答',
       'student.yourAnswer': '你的回答',
       'student.placeholder': '回答将由老师统一公布…',
+      'student.submitAll': '提交全部回答',
 
       'answer.commentPlaceholder': '写下评论…',
 
@@ -220,7 +221,8 @@
       'toast.revealed': '回答已对学生公开',
       'toast.hidden': '回答已对学生隐藏',
       'toast.revealFailed': '更新显示状态失败',
-      'toast.answerRequired': '请输入回答或附加文件',
+      'toast.nothingToSubmit': '请先回答至少一个问题',
+      'toast.submittedCount': '已提交 {n} 个回答',
       'toast.answerSubmitted': '回答已提交',
       'toast.answerFailed': '提交回答失败',
       'toast.newQuestion': '收到新问题！',

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Student View · Live QA</title>
-  <link rel="stylesheet" href="css/style.css?v=29" />
+  <link rel="stylesheet" href="css/style.css?v=31" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-config.js"></script>
 </head>
@@ -44,14 +44,19 @@
               <div class="msg" data-i18n="student.waiting">Waiting for teacher to post a question…</div>
             </div>
           </div>
+
+          <!-- Global submit: answer all questions, then submit once -->
+          <div class="submit-all-bar" id="submitAllBar" hidden>
+            <button class="btn btn-primary submit-all-btn" id="submitAllBtn" type="button" data-i18n="student.submitAll">Submit All Answers</button>
+          </div>
         </section>
       </div>
     </main>
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="js/i18n.js?v=2"></script>
-  <script src="js/app.js?v=24"></script>
+  <script src="js/i18n.js?v=3"></script>
+  <script src="js/app.js?v=25"></script>
   <script>LiveQA.initStudent();</script>
 </body>
 </html>
