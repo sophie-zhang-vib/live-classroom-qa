@@ -349,16 +349,22 @@ const LiveQA = (function () {
     const textHtml = q.question_text ? '<div class="question-card-text">' + escapeHtml(q.question_text) + '</div>' : '';
 
     // MCQ options display
+    // For students the list is directly selectable (radio inside each option);
+    // for teachers / response viewer it is a plain display list.
     let optionsHtml = '';
     if (qType === 'mcq' && Array.isArray(q.options) && q.options.length) {
       optionsHtml = '<div class="mcq-options">';
       q.options.forEach((opt, i) => {
         const letter = String.fromCharCode(65 + i);
-        optionsHtml +=
-          '<div class="mcq-option-display">' +
-            '<span class="mcq-letter">' + letter + '</span>' +
-            '<span class="mcq-option-text">' + escapeHtml(opt) + '</span>' +
-          '</div>';
+        const inner =
+          '<span class="mcq-letter">' + letter + '</span>' +
+          '<span class="mcq-option-text">' + escapeHtml(opt) + '</span>';
+        optionsHtml += isStudent
+          ? '<label class="mcq-option-display mcq-student-option">' +
+              '<input type="radio" name="mcq-answer-' + q.id + '" class="mcq-answer-radio" value="' + escapeHtml(opt) + '" data-index="' + i + '" />' +
+              inner +
+            '</label>'
+          : '<div class="mcq-option-display">' + inner + '</div>';
       });
       optionsHtml += '</div>';
     }
@@ -370,27 +376,13 @@ const LiveQA = (function () {
     let answerInputHtml = '';
     if (isStudent) {
       if (qType === 'mcq') {
-        answerInputHtml = '<div class="answer-input-bar mcq-answer-bar">' +
-          '<div class="mcq-student-options">';
-        q.options.forEach((opt, i) => {
-          const letter = String.fromCharCode(65 + i);
-          answerInputHtml +=
-            '<label class="mcq-student-option">' +
-              '<input type="radio" name="mcq-answer-' + q.id + '" class="mcq-answer-radio" value="' + escapeHtml(opt) + '" data-index="' + i + '" />' +
-              '<span class="mcq-letter">' + letter + '</span>' +
-              '<span class="mcq-option-text">' + escapeHtml(opt) + '</span>' +
-            '</label>';
-        });
-        answerInputHtml += '</div>' +
-          '<div class="answer-input-row">' +
-            '<label class="add-file-btn" title="' + i18n.t('student.answerAttach') + '">' +
-              '<input type="file" class="answer-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.rar" hidden />' +
-              '<span class="add-file-icon" aria-hidden="true">+</span>' +
-            '</label>' +
-            '<span class="file-picker-name" hidden></span>' +
-            '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
-          '</div>' +
-        '</div>';
+        // Options above are directly selectable — the bar only needs the submit button
+        answerInputHtml =
+          '<div class="answer-input-bar mcq-answer-bar">' +
+            '<div class="answer-input-row">' +
+              '<button class="btn btn-primary submit-answer-btn">' + i18n.t('common.submit') + '</button>' +
+            '</div>' +
+          '</div>';
       } else if (qType === 'fill') {
         // fill uses a single-line input (expected answer is hidden from students)
         const ph = i18n.t('student.fillPlaceholder') || 'Type your answer…';
@@ -1235,18 +1227,20 @@ const LiveQA = (function () {
       const qid = card.dataset.questionId;
       const qType = q.question_type || 'open';
 
-      fileInput.addEventListener('change', () => {
-        const f = fileInput.files[0];
-        if (f) {
-          fileNameLabel.textContent = f.name;
-          fileNameLabel.title = f.name;
-          fileNameLabel.hidden = false;
-        } else {
-          fileNameLabel.textContent = '';
-          fileNameLabel.title = '';
-          fileNameLabel.hidden = true;
-        }
-      });
+      if (fileInput) {
+        fileInput.addEventListener('change', () => {
+          const f = fileInput.files[0];
+          if (f) {
+            fileNameLabel.textContent = f.name;
+            fileNameLabel.title = f.name;
+            fileNameLabel.hidden = false;
+          } else {
+            fileNameLabel.textContent = '';
+            fileNameLabel.title = '';
+            fileNameLabel.hidden = true;
+          }
+        });
+      }
 
       function getStudentAnswerText() {
         if (qType === 'mcq') {
@@ -1258,7 +1252,7 @@ const LiveQA = (function () {
 
       async function submitAnswer() {
         const text = getStudentAnswerText();
-        const file = fileInput.files[0];
+        const file = fileInput ? fileInput.files[0] : null;
 
         if (!text && !file) {
           toast(i18n.t('toast.answerRequired'), 'error');
@@ -1298,9 +1292,11 @@ const LiveQA = (function () {
             if (input.tagName === 'TEXTAREA') input.style.height = '';
           }
           mcqRadios.forEach((r) => { r.checked = false; });
-          fileInput.value = '';
-          fileNameLabel.textContent = '';
-          fileNameLabel.hidden = true;
+          if (fileInput) fileInput.value = '';
+          if (fileNameLabel) {
+            fileNameLabel.textContent = '';
+            fileNameLabel.hidden = true;
+          }
           toast(i18n.t('toast.answerSubmitted'), 'success');
         } catch (err) {
           console.error(err);
