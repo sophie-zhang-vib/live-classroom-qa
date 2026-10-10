@@ -12,8 +12,8 @@
   --glass-dark-bg: rgba(255, 255, 255, 0.06);
 
   --text: #ffffff;
-  --text-soft: rgba(255, 255, 255, 0.92);
-  --text-muted: rgba(255, 255, 255, 0.78);
+  --text-soft: rgba(255, 255, 255, 0.96);
+  --text-muted: rgba(255, 255, 255, 0.88);
   --text-dark: #0f172a;
 
   --coral: #3b82f6;
@@ -68,7 +68,7 @@ body::before {
   position: fixed;
   inset: -10vmax;
   z-index: -3;
-  background: linear-gradient(-45deg, #0f172a 0%, #1e3a5f 15%, #0ea5e9 35%, #8b5cf6 55%, #14b8a6 75%, #334155 100%);
+  background: linear-gradient(-45deg, #0b1120 0%, #16304e 15%, #075985 35%, #5b21b6 55%, #0f766e 75%, #1e293b 100%);
   background-size: 400% 400%;
   animation: gradientFlow 18s ease infinite;
 }
@@ -83,7 +83,7 @@ body::before {
   position: fixed;
   border-radius: 50%;
   filter: blur(70px);
-  opacity: 0.5;
+  opacity: 0.3;
   z-index: -2;
   pointer-events: none;
   will-change: transform;
@@ -259,7 +259,7 @@ h1, h2, h3, h4 {
 }
 
 .input-field::placeholder {
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .input-field:focus {
@@ -699,7 +699,7 @@ a.brand:hover .brand-logo {
   transition: border 0.25s var(--ease), background 0.25s var(--ease);
 }
 
-.question-textarea::placeholder { color: rgba(255, 255, 255, 0.58); }
+.question-textarea::placeholder { color: rgba(255, 255, 255, 0.68); }
 
 .question-textarea:focus {
   border-color: rgba(255, 255, 255, 0.5);
@@ -1210,7 +1210,7 @@ a.brand:hover .brand-logo {
   color: var(--text);
 }
 
-.comment-input::placeholder { color: rgba(255, 255, 255, 0.58); }
+.comment-input::placeholder { color: rgba(255, 255, 255, 0.68); }
 
 .comment-input:focus {
   border-color: rgba(255, 255, 255, 0.5);
