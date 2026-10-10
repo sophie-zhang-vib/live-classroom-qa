@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Teacher Dashboard · Live QA</title>
-  <link rel="stylesheet" href="css/style.css?v=32" />
+  <link rel="stylesheet" href="css/style.css?v=33" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/qrcode.min.js"></script>
   <script src="js/supabase-config.js"></script>
@@ -139,6 +139,7 @@
   <!-- Response Viewer Modal (Presentation Mode) -->
   <div class="rv-overlay" id="rvOverlay" hidden>
     <div class="rv-modal">
+      <div class="rv-progress"><div class="rv-progress-bar" id="rvProgressBar"></div></div>
       <div class="rv-header">
         <span class="rv-page-indicator" id="rvPageIndicator">Q1 of 1</span>
         <button class="rv-close" id="rvCloseBtn" aria-label="Close">&times;</button>
@@ -188,7 +189,7 @@
   <div class="toast" id="toast"></div>
   <script src="js/i18n.js?v=3"></script>
   <script src="js/response-viewer.js?v=1"></script>
-  <script src="js/app.js?v=26"></script>
+  <script src="js/app.js?v=27"></script>
   <script>LiveQA.initTeacher();</script>
 </body>
 </html>

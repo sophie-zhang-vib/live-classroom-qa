@@ -1144,6 +1144,7 @@ const LiveQA = (function () {
     const rvAnswers = document.getElementById('rvAnswers');
     const rvPageIndicator = document.getElementById('rvPageIndicator');
     const rvAnswerCount = document.getElementById('rvAnswerCount');
+    const rvProgressBar = document.getElementById('rvProgressBar');
 
     let rvPages = [];   // array of { question, answers }
     let rvIndex = 0;     // current page index
@@ -1201,6 +1202,11 @@ const LiveQA = (function () {
 
       rvPageIndicator.textContent = getPageIndicator(rvIndex, rvPages.length);
       rvAnswerCount.textContent = getAnswerCountLabel(answers.length);
+      if (rvProgressBar) {
+        rvProgressBar.style.width = ((rvIndex + 1) / rvPages.length * 100) + '%';
+      }
+      // Return to the top of the slide when switching questions
+      if (rvAnswers.parentElement) rvAnswers.parentElement.scrollTop = 0;
     }
 
     function openResponseViewer() {
