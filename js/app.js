@@ -15,7 +15,15 @@ const LiveQA = (function () {
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = String(str);
-    return div.innerHTML;
+    // Escape quotes too: this helper is also used inside HTML attributes
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Only allow http(s) URLs in rendered links/images — blocks javascript: etc.
+  // Returns '' for anything else so callers can skip rendering the link.
+  function safeUrl(url) {
+    const u = String(url || '');
+    return /^https?:\/\//i.test(u) ? u : '';
   }
 
   function toast(message, type) {
@@ -49,6 +57,29 @@ const LiveQA = (function () {
       id += Math.floor(Math.random() * 10).toString();
     }
     return id;
+  }
+
+  // Teacher key: gates read access to answer keys (question_keys) via RPC.
+  // Never shared with students (kept out of the QR / student links).
+  function generateTeacherKey() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const buf = new Uint8Array(12);
+    if (window.crypto && window.crypto.getRandomValues) {
+      window.crypto.getRandomValues(buf);
+    } else {
+      for (let i = 0; i < buf.length; i++) buf[i] = Math.floor(Math.random() * 256);
+    }
+    let key = '';
+    for (let i = 0; i < buf.length; i++) key += chars[buf[i] % chars.length];
+    return key;
+  }
+
+  function saveTeacherKey(room, key) {
+    try { localStorage.setItem('liveqa-teacher-key-' + room, key); } catch (e) {}
+  }
+
+  function loadTeacherKey(room) {
+    try { return localStorage.getItem('liveqa-teacher-key-' + room) || ''; } catch (e) { return ''; }
   }
 
   function formatTime(iso) {
@@ -146,15 +177,16 @@ const LiveQA = (function () {
     card.dataset.answerId = a.id;
 
     let fileHtml = '';
-    if (a.file_url && a.file_name) {
+    const answerFileUrl = safeUrl(a.file_url);
+    if (answerFileUrl && a.file_name) {
       const ext = getFileExtension(a.file_name);
       const icon = getFileIcon(ext);
       const isImage = icon === 'image';
       fileHtml =
         '<a class="answer-file ' + (isImage ? 'answer-file-image' : '') +
-        '" href="' + escapeHtml(a.file_url) + '" target="_blank" rel="noopener">' +
+        '" href="' + escapeHtml(answerFileUrl) + '" target="_blank" rel="noopener">' +
         (isImage
-          ? '<img src="' + escapeHtml(a.file_url) + '" alt="' + escapeHtml(a.file_name) + '" />'
+          ? '<img src="' + escapeHtml(answerFileUrl) + '" alt="' + escapeHtml(a.file_name) + '" />'
           : '<span class="file-icon file-icon-' + icon + '"></span>') +
         '<span class="file-name">' + escapeHtml(a.file_name) + '</span>' +
         '</a>';
@@ -336,15 +368,16 @@ const LiveQA = (function () {
 
     // Attached file (image preview or file link)
     let fileHtml = '';
-    if (q.file_url && q.file_name) {
+    const questionFileUrl = safeUrl(q.file_url);
+    if (questionFileUrl && q.file_name) {
       const ext = getFileExtension(q.file_name);
       const icon = getFileIcon(ext);
       const isImage = icon === 'image';
       fileHtml =
         '<a class="answer-file question-file ' + (isImage ? 'answer-file-image' : '') +
-        '" href="' + escapeHtml(q.file_url) + '" target="_blank" rel="noopener">' +
+        '" href="' + escapeHtml(questionFileUrl) + '" target="_blank" rel="noopener">' +
         (isImage
-          ? '<img src="' + escapeHtml(q.file_url) + '" alt="' + escapeHtml(q.file_name) + '" />'
+          ? '<img src="' + escapeHtml(questionFileUrl) + '" alt="' + escapeHtml(q.file_name) + '" />'
           : '<span class="file-icon file-icon-' + icon + '"></span>') +
         '<span class="file-name">' + escapeHtml(q.file_name) + '</span>' +
         '</a>';
@@ -352,26 +385,9 @@ const LiveQA = (function () {
 
     const textHtml = q.question_text ? '<div class="question-card-text">' + escapeHtml(q.question_text) + '</div>' : '';
 
-    // MCQ options display
-    // For students the list is directly selectable (radio inside each option);
-    // for teachers / response viewer it is a plain display list.
-    let optionsHtml = '';
-    if (qType === 'mcq' && Array.isArray(q.options) && q.options.length) {
-      optionsHtml = '<div class="mcq-options">';
-      q.options.forEach((opt, i) => {
-        const letter = String.fromCharCode(65 + i);
-        const inner =
-          '<span class="mcq-letter">' + letter + '</span>' +
-          '<span class="mcq-option-text">' + escapeHtml(opt) + '</span>';
-        optionsHtml += isStudent
-          ? '<label class="mcq-option-display mcq-student-option">' +
-              '<input type="radio" name="mcq-answer-' + q.id + '" class="mcq-answer-radio" value="' + escapeHtml(opt) + '" data-index="' + i + '" />' +
-              inner +
-            '</label>'
-          : '<div class="mcq-option-display">' + inner + '</div>';
-      });
-      optionsHtml += '</div>';
-    }
+    // MCQ options are NOT built here — they are appended as real DOM nodes
+    // after card.innerHTML below, so option text can never inject markup
+    // or break out of an attribute.
 
     // Question type badge
     const typeBadgeHtml = '<span class="qtype-badge qtype-' + qType + '">' + qTypeLabel + '</span>';
@@ -417,13 +433,50 @@ const LiveQA = (function () {
         actionsHtml +
       '</div>' +
       textHtml +
-      optionsHtml +
       fileHtml +
       answerInputHtml +
       '<div class="answers-section">' +
         '<h4 class="section-title small">' + answersTitle + ' <span class="count answer-count">0</span></h4>' +
         '<div class="' + answersWallClass + ' answers-wall-inner"></div>' +
       '</div>';
+
+    // MCQ options: real DOM nodes, values set via properties (injection-proof).
+    // For students the list is directly selectable (radio inside each option);
+    // for teachers / response viewer it is a plain display list.
+    if (qType === 'mcq' && Array.isArray(q.options) && q.options.length) {
+      const optsBox = document.createElement('div');
+      optsBox.className = 'mcq-options';
+      q.options.forEach((opt, i) => {
+        const letter = document.createElement('span');
+        letter.className = 'mcq-letter';
+        letter.textContent = String.fromCharCode(65 + i);
+        const optText = document.createElement('span');
+        optText.className = 'mcq-option-text';
+        optText.textContent = String(opt);
+
+        let row;
+        if (isStudent) {
+          row = document.createElement('label');
+          row.className = 'mcq-option-display mcq-student-option';
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'mcq-answer-' + q.id;
+          radio.className = 'mcq-answer-radio';
+          radio.value = String(opt); // property assignment, not attribute markup
+          radio.dataset.index = i;
+          row.appendChild(radio);
+        } else {
+          row = document.createElement('div');
+          row.className = 'mcq-option-display';
+        }
+        row.appendChild(letter);
+        row.appendChild(optText);
+        optsBox.appendChild(row);
+      });
+      // Keep the original visual position: right after the question text
+      const anchor = card.querySelector('.question-card-text') || card.querySelector('.question-card-header');
+      anchor.insertAdjacentElement('afterend', optsBox);
+    }
 
     return card;
   }
@@ -454,7 +507,11 @@ const LiveQA = (function () {
           if (!error) break;
           if (error.code !== '23505') throw error;
         }
-        window.location.href = 'teacher.html?room=' + roomId;
+        const teacherKey = generateTeacherKey();
+        const { error: secretErr } = await sb.from('room_secrets').insert({ room_id: roomId, teacher_key: teacherKey });
+        if (secretErr) console.error('Failed to store teacher key', secretErr);
+        saveTeacherKey(roomId, teacherKey);
+        window.location.href = 'teacher.html?room=' + roomId + '&key=' + teacherKey;
       } catch (err) {
         console.error(err);
         toast(i18n.t('toast.createFailed'), 'error');
@@ -462,6 +519,14 @@ const LiveQA = (function () {
     });
 
     // Teacher rejoin existing classroom
+    const teacherKeyInput = document.getElementById('teacherKeyInput');
+    if (teacherRoomInput && teacherKeyInput) {
+      // Pre-fill the key when this browser created the room before
+      teacherRoomInput.addEventListener('input', () => {
+        const r = teacherRoomInput.value.trim();
+        if (/^\d{6}$/.test(r)) teacherKeyInput.value = loadTeacherKey(r);
+      });
+    }
     if (rejoinBtn && teacherRoomInput) {
       rejoinBtn.addEventListener('click', async () => {
         const room = teacherRoomInput.value.trim();
@@ -484,7 +549,9 @@ const LiveQA = (function () {
             toast(i18n.t('toast.classroomNotFound'), 'error');
             return;
           }
-          window.location.href = 'teacher.html?room=' + room;
+          const key = teacherKeyInput ? teacherKeyInput.value.trim() : '';
+          if (key) saveTeacherKey(room, key);
+          window.location.href = 'teacher.html?room=' + room + (key ? '&key=' + encodeURIComponent(key) : '');
         } catch (err) {
           console.error('Rejoin catch error:', err);
           toast(i18n.t('toast.rejoinFailed'), 'error');
@@ -517,6 +584,17 @@ const LiveQA = (function () {
     if (!room) {
       window.location.href = 'index.html';
       return;
+    }
+
+    // Teacher key gates read access to answer keys. Take it from the URL
+    // (first visit / shared link) or fall back to this browser's storage.
+    const teacherKey = getQueryParam('key') || loadTeacherKey(room);
+    if (teacherKey) {
+      saveTeacherKey(room, teacherKey);
+      // Scrub the key from the address bar — the teacher screen is often projected
+      if (getQueryParam('key') && window.history.replaceState) {
+        window.history.replaceState(null, '', 'teacher.html?room=' + room);
+      }
     }
 
     viewerName = i18n.t('common.teacher');
@@ -578,15 +656,16 @@ const LiveQA = (function () {
     }
 
     function getMcqOptions() {
-      if (!mcqList) return { options: [], correctIndex: 0 };
+      if (!mcqList) return { options: [], correctIndex: -1 };
       const rows = mcqList.querySelectorAll('.mcq-option-row');
       const options = [];
-      let correctIndex = 0;
-      rows.forEach((row, i) => {
+      // -1 means: the option ticked as correct has no text (or none ticked)
+      let correctIndex = -1;
+      rows.forEach((row) => {
         const txt = row.querySelector('.mcq-option-text').value.trim();
-        const correct = row.querySelector('.mcq-correct-radio').checked;
-        if (txt) options.push(txt);
-        if (correct) correctIndex = options.length - 1;
+        if (!txt) return; // skip empty rows entirely so indexes never shift
+        if (row.querySelector('.mcq-correct-radio').checked) correctIndex = options.length;
+        options.push(txt);
       });
       return { options, correctIndex };
     }
@@ -832,6 +911,10 @@ const LiveQA = (function () {
           toast(i18n.t('toast.mcqNeedTwoOptions') || 'Please add at least 2 options', 'error');
           return;
         }
+        if (correctIndex < 0) {
+          toast(i18n.t('toast.mcqNeedCorrect'), 'error');
+          return;
+        }
         options = opts;
         correctAnswer = String(correctIndex);
       } else if (qType === 'fill') {
@@ -868,9 +951,18 @@ const LiveQA = (function () {
           file_name: fileName,
         };
         if (options) payload.options = options;
-        if (correctAnswer !== null) payload.correct_answer = correctAnswer;
 
-        await sb.from('questions').insert(payload);
+        const { data: inserted, error: insertErr } = await sb.from('questions').insert(payload).select('id').single();
+        if (insertErr) throw insertErr;
+
+        // Answer keys live in a separate table students can never read
+        if (correctAnswer !== null) {
+          const { error: keyErr } = await sb.from('question_keys').insert({
+            question_id: inserted.id,
+            correct_answer: correctAnswer,
+          });
+          if (keyErr) throw keyErr;
+        }
         questionInput.value = '';
         questionFileInput.value = '';
         questionFileNameLabel.textContent = '';
@@ -981,16 +1073,28 @@ const LiveQA = (function () {
       editMcqEditor.hidden = editingQuestionType !== 'mcq';
       editFillEditor.hidden = editingQuestionType !== 'fill';
 
-      if (editingQuestionType === 'mcq') {
-        const opts = Array.isArray(q.options) ? q.options : [];
-        const correctIndex = parseInt(q.correct_answer, 10);
-        opts.forEach((opt, i) => editAddOptionRow(opt, i === correctIndex));
-        if (opts.length === 0) {
-          editAddOptionRow('', true);
-          editAddOptionRow('', false);
+      if (editingQuestionType === 'mcq' || editingQuestionType === 'fill') {
+        // correct_answer lives in question_keys; fetch via teacher-key-gated RPC
+        let key = null;
+        if (teacherKey) {
+          const { data } = await sb.rpc('get_question_key', {
+            p_room_id: room,
+            p_teacher_key: teacherKey,
+            p_question_id: qid,
+          });
+          key = data;
         }
-      } else if (editingQuestionType === 'fill') {
-        editFillAnswer.value = q.correct_answer || '';
+        if (editingQuestionType === 'mcq') {
+          const opts = Array.isArray(q.options) ? q.options : [];
+          const correctIndex = parseInt(key, 10);
+          opts.forEach((opt, i) => editAddOptionRow(opt, i === correctIndex));
+          if (opts.length === 0) {
+            editAddOptionRow('', true);
+            editAddOptionRow('', false);
+          }
+        } else {
+          editFillAnswer.value = key || '';
+        }
       }
 
       editOverlay.hidden = false;
@@ -1015,34 +1119,46 @@ const LiveQA = (function () {
       }
 
       const updates = { question_text: text };
+      let correctAnswer = null;
       if (editingQuestionType === 'mcq') {
         const rows = editMcqList.querySelectorAll('.mcq-option-row');
         const opts = [];
-        let correctIndex = 0;
+        let correctIndex = -1;
         rows.forEach((row) => {
           const txt = row.querySelector('.mcq-option-text').value.trim();
-          const correct = row.querySelector('.mcq-correct-radio').checked;
-          if (txt) opts.push(txt);
-          if (correct) correctIndex = opts.length - 1;
+          if (!txt) return; // skip empty rows so indexes never shift
+          if (row.querySelector('.mcq-correct-radio').checked) correctIndex = opts.length;
+          opts.push(txt);
         });
         if (opts.length < 2) {
           toast(i18n.t('toast.mcqNeedTwoOptions'), 'error');
           return;
         }
+        if (correctIndex < 0) {
+          toast(i18n.t('toast.mcqNeedCorrect'), 'error');
+          return;
+        }
         updates.options = opts;
-        updates.correct_answer = String(correctIndex);
+        correctAnswer = String(correctIndex);
       } else if (editingQuestionType === 'fill') {
         const expected = editFillAnswer.value.trim();
         if (!expected) {
           toast(i18n.t('toast.fillNeedAnswer'), 'error');
           return;
         }
-        updates.correct_answer = expected;
+        correctAnswer = expected;
       }
 
       try {
         const { error } = await sb.from('questions').update(updates).eq('id', editingQuestionId);
         if (error) throw error;
+        if (correctAnswer !== null) {
+          const { error: keyErr } = await sb.from('question_keys').upsert({
+            question_id: editingQuestionId,
+            correct_answer: correctAnswer,
+          });
+          if (keyErr) throw keyErr;
+        }
         closeEditModal();
         toast(i18n.t('toast.questionUpdated'), 'success');
       } catch (err) {
@@ -1538,7 +1654,7 @@ const LiveQA = (function () {
     // Load existing questions + answers
     async function loadQuestions() {
       const { data: questions, error: qErr } = await sb.from('questions')
-        .select('*')
+        .select('id, room_id, question_text, question_type, options, file_url, file_name, created_at')
         .eq('room_id', room)
         .order('created_at', { ascending: true });
 
@@ -1575,6 +1691,7 @@ const LiveQA = (function () {
         table: 'questions',
         filter: 'room_id=eq.' + room,
       }, (payload) => {
+        if (payload.new) delete payload.new.correct_answer; // never trust answer keys on student side
         addQuestionCard(payload.new);
         toast(i18n.t('toast.newQuestion'), 'success');
       })
@@ -1592,6 +1709,7 @@ const LiveQA = (function () {
         table: 'questions',
         filter: 'room_id=eq.' + room,
       }, (payload) => {
+        if (payload.new) delete payload.new.correct_answer;
         updateQuestionCard(payload.new);
       })
       .subscribe();

@@ -13,14 +13,14 @@ create table if not exists public.rooms (
 -- Questions table: multiple questions per room
 -- question_type: 'open' (open-ended), 'mcq' (multiple choice), 'fill' (fill-in-blank)
 -- options: jsonb array of option strings (used by mcq)
--- correct_answer: for mcq -> index of correct option (as string); for fill -> expected answer text; for open -> optional model answer
+-- correct answers are NOT stored here — see question_keys below,
+-- so students (anonymous clients) can never read them.
 create table if not exists public.questions (
   id uuid primary key default gen_random_uuid(),
   room_id text not null references public.rooms(room_id) on delete cascade,
   question_text text not null,
   question_type text not null default 'open' check (question_type in ('open', 'mcq', 'fill')),
   options jsonb,
-  correct_answer text,
   show_answer boolean not null default false,
   file_url text,
   file_name text,
@@ -28,6 +28,46 @@ create table if not exists public.questions (
 );
 
 create index if not exists questions_room_id_idx on public.questions(room_id);
+
+-- Per-room teacher keys (gate read access to answer keys via RPC).
+-- Insert allowed for anonymous room creation; no select/update/delete
+-- policies, so keys can never be read or changed through the API.
+create table if not exists public.room_secrets (
+  room_id text primary key references public.rooms(room_id) on delete cascade,
+  teacher_key text not null
+);
+
+-- Answer keys: for mcq -> index of correct option (as string);
+-- for fill -> expected answer text; open questions have no row.
+-- No SELECT policy => nobody can read these through PostgREST, and the
+-- table is NOT added to the realtime publication.
+create table if not exists public.question_keys (
+  question_id uuid primary key references public.questions(id) on delete cascade,
+  correct_answer text not null
+);
+
+-- Teacher-only read of an answer key, gated by the room's teacher key
+create or replace function public.get_question_key(p_room_id text, p_teacher_key text, p_question_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1 from public.room_secrets
+    where room_id = p_room_id and teacher_key = p_teacher_key
+  ) then
+    return null;
+  end if;
+  return (
+    select k.correct_answer
+    from public.question_keys k
+    join public.questions q on q.id = k.question_id
+    where k.question_id = p_question_id and q.room_id = p_room_id
+  );
+end;
+$$;
 
 -- Answers table: linked to a specific question
 create table if not exists public.answers (
@@ -69,6 +109,29 @@ create index if not exists answer_comments_answer_id_idx on public.answer_commen
 alter table public.rooms enable row level security;
 alter table public.questions enable row level security;
 alter table public.answers enable row level security;
+alter table public.room_secrets enable row level security;
+alter table public.question_keys enable row level security;
+
+-- Room secrets: key creation allowed, but nobody can read/change keys
+drop policy if exists "room_secrets_insert" on public.room_secrets;
+create policy "room_secrets_insert" on public.room_secrets
+  for insert with check (true);
+-- (intentionally NO select/update/delete policies)
+
+-- Question keys: writes open (same trust level as the rest of the app),
+-- reads denied so students can never fetch correct answers
+drop policy if exists "question_keys_insert" on public.question_keys;
+create policy "question_keys_insert" on public.question_keys
+  for insert with check (true);
+
+drop policy if exists "question_keys_update" on public.question_keys;
+create policy "question_keys_update" on public.question_keys
+  for update using (true) with check (true);
+
+drop policy if exists "question_keys_delete" on public.question_keys;
+create policy "question_keys_delete" on public.question_keys
+  for delete using (true);
+-- (intentionally NO select policy)
 
 -- Rooms: allow anyone to read, create, and update
 drop policy if exists "rooms_select" on public.rooms;

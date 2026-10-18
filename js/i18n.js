@@ -31,6 +31,7 @@
       'placeholder.classroomCode': 'Classroom Code',
       'placeholder.enterClassroomCode': 'Enter classroom code',
       'placeholder.studentName': 'Your name (optional)',
+      'placeholder.teacherKey': 'Teacher key (from your teacher link, optional)',
 
       // Common
       'common.code': 'Code',
@@ -129,6 +130,7 @@
       'toast.submitting': 'Submitting…',
       'toast.questionRequired': 'Please enter a question or attach a file',
       'toast.mcqNeedTwoOptions': 'Please add at least 2 options',
+      'toast.mcqNeedCorrect': 'Please tick a non-empty option as the correct answer',
       'toast.fillNeedAnswer': 'Please enter the expected answer',
       'toast.postFailed': 'Failed to post question'
     },
@@ -150,6 +152,7 @@
       'placeholder.classroomCode': '课堂码',
       'placeholder.enterClassroomCode': '请输入课堂码',
       'placeholder.studentName': '你的名字（可选）',
+      'placeholder.teacherKey': '教师密钥（来自你的教师链接，可选）',
 
       'common.code': '课堂码',
       'common.connected': '已连接',
@@ -241,6 +244,7 @@
       'toast.submitting': '提交中…',
       'toast.questionRequired': '请输入问题或附加文件',
       'toast.mcqNeedTwoOptions': '请至少添加 2 个选项',
+      'toast.mcqNeedCorrect': '请勾选一个非空选项作为正确答案',
       'toast.fillNeedAnswer': '请填写参考答案',
       'toast.postFailed': '发布问题失败'
     }
