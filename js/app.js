@@ -704,6 +704,8 @@ const LiveQA = (function () {
     }
     if (addOptionBtn) addOptionBtn.addEventListener('click', () => addMcqOptionRow('', false));
     resetMcqOptions();
+    // Ensure UI state matches the initially-selected radio ("open" by default)
+    applyQuestionTypeUI(getQuestionType());
     const questionsList = document.getElementById('questionsList');
     const emptyState = document.getElementById('emptyState');
     const questionCountEl = document.getElementById('questionCount');

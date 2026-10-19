@@ -854,6 +854,9 @@ a.brand:hover .brand-logo {
   align-items: center;
   gap: 10px;
 }
+.blank-insert-row[hidden] {
+  display: none !important;
+}
 .blank-insert-hint {
   font-size: 0.82rem;
   color: var(--muted);
