@@ -4,6 +4,9 @@
 -- `question_keys` (no SELECT policy, not in realtime), and adds a
 -- teacher-key-gated RPC for reading it back in the edit modal.
 -- Run this in Supabase SQL Editor.
+--
+-- Idempotent: safe to run on fresh DBs too (if the legacy
+-- correct_answer column never existed, the migration step skips).
 -- ============================================
 
 -- 1. Per-room teacher keys. Teachers are anonymous users too, so key
@@ -45,11 +48,23 @@ create policy "question_keys_delete" on public.question_keys
   for delete using (true);
 -- (intentionally NO select policy)
 
--- 3. Migrate existing correct answers
-insert into public.question_keys (question_id, correct_answer)
-select id, correct_answer from public.questions
-where correct_answer is not null
-on conflict (question_id) do nothing;
+-- 3. Migrate existing correct answers (only if the legacy column exists).
+--    Fresh DBs built from the new supabase-setup.sql never had this
+--    column, so the step silently skips — the table above is already
+--    the sole home for answer keys.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'questions' and column_name = 'correct_answer'
+  ) then
+    insert into public.question_keys (question_id, correct_answer)
+    select id, correct_answer from public.questions
+    where correct_answer is not null
+    on conflict (question_id) do nothing;
+  end if;
+end;
+$$;
 
 -- 4. Teacher-only read, gated by the room's teacher key
 create or replace function public.get_question_key(p_room_id text, p_teacher_key text, p_question_id uuid)
@@ -74,7 +89,8 @@ begin
 end;
 $$;
 
--- 5. Drop the leaked column so realtime payloads stop carrying it
+-- 5. Drop the leaked column (if it still exists) so realtime payloads
+--    stop carrying it. Fresh DBs never had it — no-op there.
 alter table public.questions drop column if exists correct_answer;
 
 -- NOTE: rooms created before this migration have no row in room_secrets,
