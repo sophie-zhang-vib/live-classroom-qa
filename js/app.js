@@ -26,6 +26,15 @@ const LiveQA = (function () {
     return /^https?:\/\//i.test(u) ? u : '';
   }
 
+  // Render question text to safe HTML. For fill-in-blank questions, runs of
+  // 6+ underscores become styled blank spans. Escape first, then inject only
+  // static markup — user text never becomes HTML.
+  function renderQuestionText(text, qType) {
+    const esc = escapeHtml(text || '');
+    if (qType !== 'fill') return esc;
+    return esc.replace(/_{6,}/g, '<span class="fill-blank" aria-hidden="true"></span>');
+  }
+
   function toast(message, type) {
     const el = document.getElementById('toast');
     if (!el) return;
@@ -383,7 +392,7 @@ const LiveQA = (function () {
         '</a>';
     }
 
-    const textHtml = q.question_text ? '<div class="question-card-text">' + escapeHtml(q.question_text) + '</div>' : '';
+    const textHtml = q.question_text ? '<div class="question-card-text">' + renderQuestionText(q.question_text, qType) + '</div>' : '';
 
     // MCQ options are NOT built here — they are appended as real DOM nodes
     // after card.innerHTML below, so option text can never inject markup
@@ -613,6 +622,8 @@ const LiveQA = (function () {
     const addOptionBtn = document.getElementById('addOptionBtn');
     const fillEditor = document.getElementById('fillAnswerEditor');
     const fillExpectedAnswer = document.getElementById('fillExpectedAnswer');
+    const blankInsertRow = document.getElementById('blankInsertRow');
+    const insertBlankBtn = document.getElementById('insertBlankBtn');
     const exportBtn = document.getElementById('exportBtn');
 
     // ---------- Question type composer helpers ----------
@@ -624,8 +635,26 @@ const LiveQA = (function () {
     function applyQuestionTypeUI(type) {
       if (mcqEditor) mcqEditor.hidden = (type !== 'mcq');
       if (fillEditor) fillEditor.hidden = (type !== 'fill');
+      if (blankInsertRow) blankInsertRow.hidden = (type !== 'fill');
+      // Hint the blank-marker workflow right in the textarea for fill questions
+      if (questionInput) {
+        const phKey = type === 'fill' ? 'teacher.fillQuestionPlaceholder' : 'teacher.questionPlaceholder';
+        questionInput.placeholder = i18n.t(phKey) || questionInput.placeholder;
+      }
       document.querySelectorAll('.qtype-label').forEach((lbl) => {
         lbl.classList.toggle('active', lbl.dataset.qtype === type);
+      });
+    }
+
+    // Insert a blank marker at the cursor (or end) of the question textarea
+    if (insertBlankBtn) {
+      insertBlankBtn.addEventListener('click', () => {
+        const marker = '______';
+        const start = questionInput.selectionStart || 0;
+        const end = questionInput.selectionEnd || 0;
+        questionInput.value = questionInput.value.slice(0, start) + marker + questionInput.value.slice(end);
+        questionInput.focus();
+        questionInput.selectionStart = questionInput.selectionEnd = start + marker.length;
       });
     }
 
@@ -918,6 +947,10 @@ const LiveQA = (function () {
         options = opts;
         correctAnswer = String(correctIndex);
       } else if (qType === 'fill') {
+        if (!/_{6,}/.test(q)) {
+          toast(i18n.t('toast.fillNeedBlank'), 'error');
+          return;
+        }
         const expected = (fillExpectedAnswer && fillExpectedAnswer.value.trim()) || '';
         if (!expected) {
           toast(i18n.t('toast.fillNeedAnswer') || 'Please enter the expected answer', 'error');
@@ -1304,7 +1337,7 @@ const LiveQA = (function () {
           '<span class="qtype-badge qtype-' + rvQType + '">' + rvTypeLabel + '</span>' +
           '<span class="rv-q-time">' + formatTime(question.created_at) + '</span>' +
         '</div>' +
-        '<div class="rv-q-text">' + escapeHtml(question.question_text) + '</div>' +
+        '<div class="rv-q-text">' + renderQuestionText(question.question_text, rvQType) + '</div>' +
         rvOptionsHtml;
 
       rvAnswers.innerHTML = '';

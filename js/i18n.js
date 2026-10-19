@@ -64,6 +64,10 @@
       'teacher.optionPlaceholder': 'Option text',
       'teacher.expectedAnswer': 'Expected answer',
       'teacher.expectedAnswerPh': 'e.g. Paris',
+      'teacher.fillQuestionPlaceholder': 'Enter the sentence and click "Insert blank" where students should fill in',
+      'teacher.insertBlank': 'Insert blank',
+      'teacher.insertBlankTitle': 'Insert a blank (______) at the cursor',
+      'teacher.insertBlankHint': 'A ______ marks where students fill in',
       'teacher.empty': 'No questions yet. Post your first question above to get started.',
       'teacher.onlineStudents': 'Online Students',
       'teacher.questions': 'Questions',
@@ -132,6 +136,7 @@
       'toast.mcqNeedTwoOptions': 'Please add at least 2 options',
       'toast.mcqNeedCorrect': 'Please tick a non-empty option as the correct answer',
       'toast.fillNeedAnswer': 'Please enter the expected answer',
+      'toast.fillNeedBlank': 'Please insert at least one blank (click "Insert blank") in the question',
       'toast.postFailed': 'Failed to post question'
     },
     zh: {
@@ -183,6 +188,10 @@
       'teacher.optionPlaceholder': '选项内容',
       'teacher.expectedAnswer': '参考答案',
       'teacher.expectedAnswerPh': '例如：巴黎',
+      'teacher.fillQuestionPlaceholder': '输入题目，在需要学生作答的位置点击「插入空格」',
+      'teacher.insertBlank': '插入空格',
+      'teacher.insertBlankTitle': '在光标处插入空格（______）',
+      'teacher.insertBlankHint': '______ 表示学生作答的位置',
       'teacher.empty': '暂无问题。在上方发布第一个问题即可开始。',
       'teacher.onlineStudents': '在线学生',
       'teacher.questions': '问题数',
@@ -246,6 +255,7 @@
       'toast.mcqNeedTwoOptions': '请至少添加 2 个选项',
       'toast.mcqNeedCorrect': '请勾选一个非空选项作为正确答案',
       'toast.fillNeedAnswer': '请填写参考答案',
+      'toast.fillNeedBlank': '请先在题目中插入至少一个空格（点击「插入空格」）',
       'toast.postFailed': '发布问题失败'
     }
   };

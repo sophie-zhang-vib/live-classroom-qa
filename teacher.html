@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Teacher Dashboard · Live QA</title>
-  <link rel="stylesheet" href="css/style.css?v=35" />
+  <link rel="stylesheet" href="css/style.css?v=37" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/qrcode.min.js"></script>
   <script src="js/supabase-config.js"></script>
@@ -68,6 +68,14 @@
                 <span class="add-file-icon" aria-hidden="true">+</span>
               </label>
               <span class="file-picker-name question-file-name" hidden></span>
+            </div>
+
+            <!-- Blank inserter (shown only for fill) -->
+            <div class="blank-insert-row" id="blankInsertRow" hidden>
+              <button type="button" class="btn btn-ghost btn-sm" id="insertBlankBtn" title="Insert a blank at cursor" data-i18n-title="teacher.insertBlankTitle">
+                + <span data-i18n="teacher.insertBlank">Insert blank</span>
+              </button>
+              <span class="blank-insert-hint" data-i18n="teacher.insertBlankHint">A ______ marks where students fill in</span>
             </div>
 
             <!-- MCQ options editor (shown only for mcq) -->
@@ -187,9 +195,9 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="js/i18n.js?v=3"></script>
+  <script src="js/i18n.js?v=4"></script>
   <script src="js/response-viewer.js?v=1"></script>
-  <script src="js/app.js?v=29"></script>
+  <script src="js/app.js?v=30"></script>
   <script>LiveQA.initTeacher();</script>
 </body>
 </html>

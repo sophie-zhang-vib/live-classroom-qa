@@ -790,11 +790,39 @@ a.brand:hover .brand-logo {
   gap: 10px;
 }
 .mcq-correct-radio {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--purple);
+  width: 20px !important;
+  height: 20px !important;
   flex-shrink: 0;
   cursor: pointer;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  border: 2px solid rgba(255, 255, 255, 0.4) !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.mcq-correct-radio:hover {
+  border-color: var(--purple);
+  background: rgba(139, 92, 246, 0.15);
+}
+
+.mcq-correct-radio:checked {
+  border-color: var(--purple);
+  background: rgba(139, 92, 246, 0.25);
+}
+
+.mcq-correct-radio:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--purple);
 }
 .mcq-option-text {
   flex: 1;
@@ -817,6 +845,30 @@ a.brand:hover .brand-logo {
 .fill-answer-label {
   font-size: 0.88rem;
   color: var(--text-soft);
+}
+
+/* Blank inserter row (teacher composer, fill type only) */
+.blank-insert-row {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.blank-insert-hint {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* Blank placeholder rendered inside question text (student/teacher cards, RV) */
+.fill-blank {
+  display: inline-block;
+  min-width: 3.2em;
+  height: 1em;
+  margin: 0 0.15em;
+  vertical-align: -0.15em;
+  border-bottom: 2px solid var(--purple);
+  border-radius: 2px;
+  background: rgba(139, 92, 246, 0.14);
 }
 
 /* ---------- Question type badge ---------- */
